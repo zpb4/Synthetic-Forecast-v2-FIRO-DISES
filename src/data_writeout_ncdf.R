@@ -51,7 +51,7 @@ shefs_nc<-nc_create('./out/Qf-syn.nc',shefs_var,force_v4 = F)
 ncvar_put(shefs_nc,shefs_var,shefs_out)
 nc_close(shefs_nc)
 
-#rm(list=ls());gc()
+rm(list=ls());gc()
 
 #################################END#############################################
 
