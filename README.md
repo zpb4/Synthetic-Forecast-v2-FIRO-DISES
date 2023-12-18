@@ -5,7 +5,9 @@ Synthetic forecast model to support FIRO work under DISES funding. Version 2 is 
    
 - 'NHG' branch is full implementation of model for New Hogan reservoir inflow (NHGC1) and downstream local flows at Mud Slough site (MSGC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/f63ead2d62414940a7d90acdc234a5d1/) and must be extracted to 'data' sub-repo to run the model.   
 
-#### Note: After downloading and extracting data from Hydroshare resources above, ensure local directory path for HEFS data is configured: 'my_local_directory/data/HEFS/...'  before running the data-processing routine below
+- 'LAM' branch is full implementation of model for Lake Mendocino reservoir inflow (LAMC1) and downstream local flows at Ukiah and Hopland (UKAC1, HOPC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/ccffddde118f4145854c960295f520cb/) and must be extracted to 'data' sub-repo to run the model.
+   
+#### Note: After downloading and extracting data from Hydroshare resources above, ensure local directory path for HEFS data is configured: 'my_local_directory/data/HEFS/...', where '...' are the site specific sub-repos, before running the data-processing routine below
    
 Information below describes setup and execution of the model:   
 # data
