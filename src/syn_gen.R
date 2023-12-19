@@ -1,15 +1,23 @@
 
-syn_gen <- function (n_samp=1,kk=20,keysite=1,ixx_sim) {
+syn_gen <- function (n_samp=1,kk=20,keysite=1,fit_start,fit_end,gen_start,gen_end,leave_out_years) {
   
   #n_samp = the number of synthetic ensembles to create
   #kk = the k used in KNN resampling
   #keysite = an index for which site should be used to drive resampling  
-  #ixx_sim = date object that spans the length of the desired synthetic forecasts
+  #ixx_gen = date object that spans the length of the desired synthetic forecasts
+  #ixx_fit = date object from hindcast period to fit model, excluding and 'leave out years' specified in model setup
+  
+  ixx_gen <- as.POSIXlt(seq(as.Date(gen_start),as.Date(gen_end),by='day'),tz = "UTC") 
+  n_gen <- length(ixx_gen)
+  ixx_fit_all <- as.POSIXlt(seq(as.Date(fit_start),as.Date(fit_end),by='day'),tz = "UTC")
+  trn_idx <- !(ixx_fit_all$year%in%(leave_out_years-1900))
+  ixx_fit <- ixx_fit_all[trn_idx] #fit years excluding leave out years
+  ixx_fit <- ixx_fit[ixx_fit%in%ixx_obs_forward] #ensure all fit years are in the 'ixx_obs_forward' index, remove if not
   
   #some error catching
   if (n_samp < 1 | !is.numeric(n_samp) | n_samp%%1!=0) {stop("n_samp is not a valid entry")}
   if (kk < 1 | !is.numeric(kk) | kk%%1!=0) {stop("k is not a valid entry")}
-  if (ixx_sim[1] < ixx_obs_forward[1] | ixx_sim[length(ixx_sim)] > ixx_obs_forward[length(ixx_obs_forward)]) {
+  if (ixx_gen[1] < ixx_obs_forward[1] | ixx_gen[length(ixx_gen)] > ixx_obs_forward[length(ixx_obs_forward)]) {
     stop("simulation period outside available observational period")
   }
   
@@ -25,17 +33,17 @@ syn_gen <- function (n_samp=1,kk=20,keysite=1,ixx_sim) {
   decay <- (1:leads)^my_power / sum(((1:leads)^my_power))
   
   #set the key observation-based covariate values for the simulation
-  obs_forward_all_leads_sim <- obs_forward_all_leads[,ixx_obs_forward%in%ixx_sim,,drop=FALSE]
-  n_sim <- length(ixx_sim)
+  obs_forward_all_leads_gen <- obs_forward_all_leads[,ixx_obs_forward%in%ixx_gen,,drop=FALSE]
+  n_gen <- length(ixx_gen)
   
   
   #this calculates the distance between each 1:leads set of obs in the simulation period and the hindcast period
   #knn_dist is a matrix of distances, with dimensions (n_hind_forward,n_sim)
   #note, this distance is only calculated for the keysite
-  sim_knn_data <- t(obs_forward_all_leads_sim[keysite,,])
-  hind_knn_data <- t(obs_forward_all_leads_hind[keysite,,])
-  knn_dist <- sapply(1:ncol(sim_knn_data),function(x){
-    sqrt(colSums(decay*(sim_knn_data[,x] - hind_knn_data)^2))
+  gen_knn_data <- t(obs_forward_all_leads_gen[keysite,,])
+  fit_knn_data <- t(obs_forward_all_leads_hind[keysite,ixx_hefs%in%ixx_fit,])
+  knn_dist <- sapply(1:ncol(gen_knn_data),function(x){
+    sqrt(colSums(decay*(gen_knn_data[,x] - fit_knn_data)^2))
   })
   
   #the resampled locations viaa KNN to use
@@ -47,23 +55,23 @@ syn_gen <- function (n_samp=1,kk=20,keysite=1,ixx_sim) {
   #####################Step 1: fit and simulate the ensembe average model##########################
   
   #fit var model set to only use obs flows from keysite, and assumes a lag-1 structure
-  varx_x <- obs_forward_all_leads_hind[keysite,,]
-  var_model <- MTS::VARX(zt=t(hefs_forward_cumul_ens_avg[,ixx_hefs%in%ixx_obs_forward,drop=FALSE]), p=1, xt = varx_x)
+  varx_x <- obs_forward_all_leads_hind[keysite,ixx_hefs%in%ixx_fit,]
+  var_model <- MTS::VARX(zt=t(hefs_forward_cumul_ens_avg[,ixx_hefs%in%ixx_fit,drop=FALSE]), p=1, xt = varx_x)
   #zt = a T-by-k data matrix of a k-dim time series
   #p VAR order
   #xt = a T-by-kx matrix of kx exogenous variables
   
   #simulate from var model
-  varx_x <- obs_forward_all_leads_sim[keysite,,]
+  varx_x <- obs_forward_all_leads_gen[keysite,,]
   varx_resid <- rbind(rep(0,n_sites),var_model$residuals) #assume zero residuals for first time step
   exg_pred <- varx_x%*%t(var_model$beta)
   innovations <- varx_resid[knn_lst,,drop=FALSE]
   
   #simulations of ensemble average of cumulative flows
-  cumul_ens_avg_sim <- array(0,c(n_sim,n_sites))
-  for (i in 2:n_sim) {
-    cumul_ens_avg_sim[i,] <- exg_pred[i,] + var_model$Phi%*%cumul_ens_avg_sim[i-1,] + innovations[i,]
-    cumul_ens_avg_sim[i,]  <- sapply(cumul_ens_avg_sim[i,],function(x){max(x,0)})
+  cumul_ens_avg_gen <- array(0,c(n_gen,n_sites))
+  for (i in 2:n_gen) {
+    cumul_ens_avg_gen[i,] <- exg_pred[i,] + var_model$Phi%*%cumul_ens_avg_gen[i-1,] + innovations[i,]
+    cumul_ens_avg_gen[i,]  <- sapply(cumul_ens_avg_gen[i,],function(x){max(x,0)})
   }
   gc()
   #######################################################################################################
@@ -71,8 +79,8 @@ syn_gen <- function (n_samp=1,kk=20,keysite=1,ixx_sim) {
   
   ######Step 2: Model the cumulative ensemble spread around the cumulative ensemble mean###################
   
-  cumul_ens_resid_sim <- array(0,c(n_sites,n_ens,n_sim))
-  cumul_sim <- array(NA,c(n_sites,n_ens,n_sim))
+  cumul_ens_resid_gen <- array(0,c(n_sites,n_ens,n_gen))
+  cumul_gen <- array(NA,c(n_sites,n_ens,n_gen))
   
   #Individual AR version
   ar_ens_resid_models <- list(n_sites)
@@ -80,14 +88,14 @@ syn_gen <- function (n_samp=1,kk=20,keysite=1,ixx_sim) {
     ar_ens_resid_models[[j]] <- list(n_ens)
     for(e in 1:n_ens) {
       #fit AR model to ensemble residual, then simulate from that model with resampled innovations
-      ar_ens_resid_models[[j]][[e]] <- arima(hefs_forward_cumul_ens_resid[j,e,],order=c(1,0,0),include.mean=FALSE)
+      ar_ens_resid_models[[j]][[e]] <- arima(hefs_forward_cumul_ens_resid[j,e,ixx_hefs%in%ixx_fit],order=c(1,0,0),include.mean=FALSE)
       innovations <- ar_ens_resid_models[[j]][[e]]$residuals[knn_lst]
-      cumul_ens_resid_sim[j,e,] <- arima.sim(n_sim,model=list('ar'=ar_ens_resid_models[[j]][[e]]$coef),innov=innovations)
+      cumul_ens_resid_gen[j,e,] <- arima.sim(n_gen,model=list('ar'=ar_ens_resid_models[[j]][[e]]$coef),innov=innovations)
       
       #use these resampled residuals to estimate individual cumulative ensemble members
-      cumul_sim[j,e,] <- cumul_ens_resid_sim[j,e,] + cumul_ens_avg_sim[,j]
+      cumul_gen[j,e,] <- cumul_ens_resid_gen[j,e,] + cumul_ens_avg_gen[,j]
       #address any negative values
-      cumul_sim[j,e,] <- sapply(cumul_sim[j,e,],function(x) {max(0,x)})
+      cumul_gen[j,e,] <- sapply(cumul_gen[j,e,],function(x) {max(0,x)})
       
     }
   }
@@ -141,23 +149,24 @@ syn_gen <- function (n_samp=1,kk=20,keysite=1,ixx_sim) {
   knn_lst <- apply(knn_dist,2,function(x) {sample(c(0,order(x)[1:kk]),size=1,prob=c(0,wts))})
     
   #final array for the ensemble forecasts at all lead times
-  all_leads_sim_frac <- array(NA,c(dim(cumul_sim),leads))
-  all_leads_sim <- array(NA,c(dim(cumul_sim),leads))
+  all_leads_gen_frac <- array(NA,c(dim(cumul_gen),leads))
+  all_leads_gen <- array(NA,c(dim(cumul_gen),leads))
   for (j in 1:n_sites) {
     for(e in 1:n_ens) {
       #knn to resample fractions
-      all_leads_sim_frac[j,e,,] <- hefs_forward_frac[j,e,knn_lst,]
+      hefs_fit_forward_frac <- hefs_forward_frac[,,ixx_hefs%in%ixx_fit,]
+      all_leads_gen_frac[j,e,,] <- hefs_fit_forward_frac[j,e,knn_lst,]
       #set undefined fractions (due to zero totals) to all zeros
-      all_leads_sim_frac[j,e,,][which(is.na(all_leads_sim_frac[j,e,,]))] <- 0
+      all_leads_gen_frac[j,e,,][which(is.na(all_leads_gen_frac[j,e,,]))] <- 0
       #calculate final 15-day ahead forecasts
-      all_leads_sim[j,e,,] <- sapply(1:leads,function(x) {all_leads_sim_frac[j,e,,x]*cumul_sim[j,e,]})
+      all_leads_gen[j,e,,] <- sapply(1:leads,function(x) {all_leads_gen_frac[j,e,,x]*cumul_gen[j,e,]})
     }
   }
-  rm(all_leads_sim_frac)
+  rm(all_leads_gen_frac)
   gc()
   #######################################################################################################
     
-  return(all_leads_sim)  
+  return(all_leads_gen)  
     
 }
 
