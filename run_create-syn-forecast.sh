@@ -7,7 +7,6 @@ SLURM="#!/bin/bash\n\
 #SBATCH --export=ALL\n\
 #SBATCH --nodes=1\n\
 #SBATCH --exclusive\n\
-#SBATCH --mem-per-cpu=4G\n\
 #SBATCH --output=syngen.txt\n\
 #SBATCH --ntasks-per-node=80\n\
 

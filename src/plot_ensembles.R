@@ -6,8 +6,8 @@ library(fields)
 #----------------------------------------
 
 load("out/data_prep_rdata.RData")
-syn_hefs_forward <- readRDS('out/syn_hefs_forward.rds')
-ixx_sim <- readRDS('out/ixx_sim.rds') 
+syn_hefs_forward <- readRDS('out/syn_hefs_forward_plot-ens.rds') #use only a slice of larger sample array
+ixx_gen <- readRDS('out/ixx_gen.rds') 
 n_samp <- readRDS('out/n_samp.rds') 
 
 #################################################################
@@ -20,10 +20,12 @@ cur_site <- 1
 
 obs_rank <- 4   #pick which obs event to plot (1 largest, 2 second largest, etc)
 #get date for plot
-obs_date_loc <- which(obs[,cur_site]==sort(obs[,cur_site],decreasing=TRUE)[obs_rank])  #index for maximum observation
-obs_date <- ixx_obs[obs_date_loc]
+#obs_date_loc <- which(obs[,cur_site]==sort(obs[,cur_site],decreasing=TRUE)[obs_rank])  #index for maximum observation
+#obs_date <- ixx_obs[obs_date_loc]
+obs_date_loc <- which(as.character.Date(ixx_obs)=='1997-01-23')
+obs_date <-ixx_obs[obs_date_loc]
 hefs_date_loc <- which(ixx_hefs==obs_date)
-syn_hefs_date_loc <- which(ixx_sim==obs_date)
+syn_hefs_date_loc <- which(ixx_gen==obs_date)
 
 num_plot_rows <- min(n_samp+1,4)
 par(mfcol=c(num_plot_rows,4),mar=c(3,3,1,1),mgp=c(3,.4,0))
