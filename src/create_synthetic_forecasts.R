@@ -7,7 +7,6 @@ source('./src/syn_gen.R')
 
 print(paste('syngen start',Sys.time()))
 #parallelization code
-parallel::detectCores()
 n.cores <- parallel::detectCores()
 my.cluster<-parallel::makeCluster(n.cores,type = 'PSOCK')
 print(my.cluster)
@@ -20,11 +19,12 @@ foreach::getDoParRegistered()
 load("out/data_prep_rdata.RData")
 
 #number of synthetic ensembles
-n_samp <- 10
+n_samp <- 100
 #k for KNN sampling
 kk <- 20
 #the site to use as the key site for resampling; generally main reservoir inflow site
 keysite <- which(site_names=="NHGC1") 
+parllel=F
 
 #either input 'all' to fit to all available fit data and generate across all available observations
 #or input 'specify' and delineate specific dates in 'fit-start/end' and 'gen-start/end'
@@ -55,16 +55,23 @@ save.image("./out/model-fit_rdata.RData")
 #array to store 
 syn_hefs_forward <- array(NA,c(n_samp,n_sites,n_ens,length(ixx_gen),leads))
 
-#parallel 'foreach' implementation of synthetic forecast generation
-syn_hefs_out<-foreach(m = 1:n_samp,.inorder=F)%dopar%{
-  print(m)
-  syn_hefs<- syn_gen(n_samp,kk,keysite,fit_start,fit_end,gen_start,gen_end,leave_out_years)
-  return(syn_hefs)
+if(parllel==TRUE){
+  #parallel 'foreach' implementation of synthetic forecast generation
+  syn_hefs_out<-foreach(m = 1:n_samp,.inorder=F)%dopar%{
+    syn_hefs<- syn_gen(1,kk,keysite,fit_start,fit_end,gen_start,gen_end,leave_out_years)
+    return(syn_hefs)
+  }
+
+  #compile to multidimensional array and save
+  for(m in 1:n_samp){
+    syn_hefs_forward[m,,,,]<-syn_hefs_out[[m]]
+  }
 }
 
-#compile to multidimensional array and save
-for(m in 1:n_samp){
-  syn_hefs_forward[m,,,,]<-syn_hefs_out[[m]]
+if(parllel==FALSE){
+  for(m in 1:n_samp){
+    syn_hefs_forward[m,,,,]<-syn_gen(1,kk,keysite,fit_start,fit_end,gen_start,gen_end,leave_out_years)
+  }
 }
 
 saveRDS(syn_hefs_forward,file='out/syn_hefs_forward.rds')
@@ -74,3 +81,5 @@ saveRDS(n_samp,file='out/n_samp.rds')
 rm(list = ls());gc()
 
 print(paste('syngen end',Sys.time()))
+
+stopCluster()
