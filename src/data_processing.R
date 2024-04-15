@@ -4,6 +4,10 @@ library(lubridate)
 library(stringr)
 
 print(paste('datapro start',Sys.time()))
+
+#input main location ID
+loc <- 'NHG'  #current options: 'NHG' 'YRS' 'LAM'
+
 #---------------------Get the daily observations for each site ----------------------------
 #REQUIREMENTS FOR 'observed_flows.csv'
 #1) The observed flow matrix represents daily flows
@@ -11,7 +15,7 @@ print(paste('datapro start',Sys.time()))
 #3) The remaining columns each have a different site, and are named using the site ID (e.g., ADOC1)
 #4) The units of flow are kcfs
 
-obs <- read.csv('./data/observed_flows.csv',header=TRUE)
+obs <- read.csv(paste('./data/',loc,'/observed_flows.csv',sep=''),header=TRUE)
 obs <- data.frame(obs)
 ixx_obs <- as.POSIXlt(ymd(obs[,1]),tz = "UTC")  
 site_names <- sort(colnames(obs)[-1])
@@ -25,18 +29,18 @@ col_names <- sort(col_names) #rearrange alphabetically to jive w/'folder_list' b
 obs <- subset(obs,select=col_names)
 
 #create an 'out' repository to store metadata
-if (!dir.exists('./out')) {
-  dir.create('./out')
+if (!dir.exists(paste('./out/',loc,sep=''))) {
+  dir.create(paste('./out/',loc,sep=''))
 }
 
-if (!dir.exists('./out/HEFS')) {
-  dir.create('./out/HEFS')
+if (!dir.exists(paste('./out/',loc,'/HEFS',sep=''))) {
+  dir.create(paste('./out/',loc,'/HEFS',sep=''))
 }
 
 #create a directory to store daily forecast .csv files for HEFS
 for(sites in site_names){
-  if (!dir.exists(paste('./out/HEFS/',sites,sep=''))) {
-    dir.create(paste('./out/HEFS/',sites,sep=''))
+  if (!dir.exists(paste('./out/',loc,'HEFS/',sites,sep=''))) {
+    dir.create(paste('./out/',loc,'HEFS/',sites,sep=''))
   }
 }
 #------------------------------------------------------------------------------------------
@@ -55,15 +59,15 @@ for(sites in site_names){
 #7) the first column includes the date, and all other columns include forecasts for different ensemble members
 
 #names of HEFS folders
-folder_list <- list.files('./data/HEFS')
+folder_list <- list.files(paste('./data/',loc,'/HEFS',sep=''))
 
 #get metadata for the forecasts
-all_files <- list.files(paste('./data/HEFS/',folder_list[1],'/',sep=""))
+all_files <- list.files(paste('./data/',loc,'HEFS/',folder_list[1],'/',sep=""))
 toskip <- 0
-temp <- read.csv(paste('./data/HEFS/',folder_list[1],'/',all_files[1],sep=""),header=TRUE,skip=toskip)
+temp <- read.csv(paste('./data/',loc,'HEFS/',folder_list[1],'/',all_files[1],sep=""),header=TRUE,skip=toskip)
 if(!is.numeric(temp[1,2])) {
   toskip <- toskip + 1
-  temp <- read.csv(paste('./data/HEFS/',folder_list[1],'/',all_files[1],sep=""),header=TRUE,skip=toskip)
+  temp <- read.csv(paste('./data/',loc,'HEFS/',folder_list[1],'/',all_files[1],sep=""),header=TRUE,skip=toskip)
 }
 #the first row is for the current hour (12 GMT), so we drop that one
 temp <- temp[-1,]
@@ -91,11 +95,11 @@ hefs_forward <- array(NA,c(n_sites,n_ens,n_hefs,leads))
 for(i in 1:n_sites){
   
   #get files for current site
-  all_files <- list.files(paste('./data/HEFS/',folder_list[i],'/',sep=""))
+  all_files <- list.files(paste('./data/',loc,'HEFS/',folder_list[i],'/',sep=""))
   
   for (j in 1:n_hefs) {
     cur_file <- grep(substr(HEFS_dates[j],1,8),all_files)
-    temp <- read.csv(paste('./data/HEFS/',folder_list[i],'/',all_files[cur_file],sep=""),header=TRUE,skip=toskip)
+    temp <- read.csv(paste('./data/',loc,'HEFS/',folder_list[i],'/',all_files[cur_file],sep=""),header=TRUE,skip=toskip)
     #the first row is for the current hour (12 GMT), so we drop that one
     temp <- temp[-1,]
     #convert to daily forecasts 
@@ -107,7 +111,7 @@ for(i in 1:n_sites){
     colnames(hefs_dly_out)<-c('Date',paste(col_names[i],c('',paste('.',1:(dim(hefs_dly_out)[2]-2),sep='')),sep=''))
     filename<-str_replace(all_files[cur_file],'hefs_hourly','daily')
     if(str_split(filename,'_')[[1]][2]!=col_names[i]){filename<-str_replace(filename,str_split(filename,'_')[[1]][2],col_names[i])}
-    write.csv(hefs_dly_out,file=paste('./out/HEFS/',col_names[i],'/',filename,sep=''),row.names = F)
+    write.csv(hefs_dly_out,file=paste('./out/',loc,'HEFS/',col_names[i],'/',filename,sep=''),row.names = F)
   }  
 }
 
@@ -160,7 +164,7 @@ obs_forward_all_leads_hind <- obs_forward_all_leads[,ixx_obs_forward%in%ixx_hefs
 #################################
 
 
-save.image("out/data_prep_rdata.RData")
+save.image(paste('out/',loc,'/data_prep_rdata.RData',sep=''))
 
 print(paste('datapro end',Sys.time()))
 

@@ -1,9 +1,10 @@
 .DS_Store
 .Rhistory
+.future
 
 /data/.Rhistory
 /data/.DS_Store
-/data/HEFS
+/data/*
 
 /src/.Rhistory
 /src/.DS_Store
@@ -17,3 +18,4 @@
 *.txt
 *.sh
 *.cmd
+*.csv

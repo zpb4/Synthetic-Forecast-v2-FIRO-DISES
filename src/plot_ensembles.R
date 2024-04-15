@@ -4,9 +4,10 @@ rm(list=ls())
 library(fields)
 
 #----------------------------------------
+parm = 'b'
 
 load("out/data_prep_rdata.RData")
-syn_hefs_forward <- readRDS('out/syn_hefs_forward_plot-ens.rds') #use only a slice of larger sample array
+syn_hefs_forward <- readRDS(paste('out/syn_hefs_forward-',parm,'_plot-ens.rds',sep='')) #use only a slice of larger sample array
 ixx_gen <- readRDS('out/ixx_gen.rds') 
 n_samp <- readRDS('out/n_samp.rds') 
 
@@ -15,15 +16,15 @@ n_samp <- readRDS('out/n_samp.rds')
 
 ##############Ensemble Density Plots###############
 
-cur_site <- 1
+cur_site <- 2
 
 
-obs_rank <- 4   #pick which obs event to plot (1 largest, 2 second largest, etc)
+obs_rank <- 2   #pick which obs event to plot (1 largest, 2 second largest, etc)
 #get date for plot
-#obs_date_loc <- which(obs[,cur_site]==sort(obs[,cur_site],decreasing=TRUE)[obs_rank])  #index for maximum observation
-#obs_date <- ixx_obs[obs_date_loc]
-obs_date_loc <- which(as.character.Date(ixx_obs)=='1997-01-23')
-obs_date <-ixx_obs[obs_date_loc]
+obs_date_loc <- which(obs[,cur_site]==sort(obs[,cur_site],decreasing=TRUE)[obs_rank])  #index for maximum observation
+obs_date <- ixx_obs[obs_date_loc]
+#obs_date_loc <- which(as.character.Date(ixx_obs)=='1997-01-23')
+#obs_date <-ixx_obs[obs_date_loc]
 hefs_date_loc <- which(ixx_hefs==obs_date)
 syn_hefs_date_loc <- which(ixx_gen==obs_date)
 
@@ -80,7 +81,7 @@ for (ld in c(1,4,7,10)) {
 
 
 #################Aggregate validation#######################################
-cur_site <- 1
+#cur_site <- 2
 cur_samp <- 1
 cur_e <- 4
 #check autocorrelation for specific lead times (for one sample, ensemble member and site)
@@ -135,7 +136,7 @@ if (n_samp<2) {
     obs_date <- ixx_obs[keep][obs_date_loc]
     obs_forward_date_loc <- which(ixx_obs_forward==obs_date)
     hefs_date_loc <- which(ixx_hefs==obs_date)
-    syn_hefs_date_loc <- which(ixx_sim==obs_date)
+    syn_hefs_date_loc <- which(ixx_gen==obs_date)
   
     for (ld_indx in 1:length(all_leads)) {
       ld <- all_leads[ld_indx]

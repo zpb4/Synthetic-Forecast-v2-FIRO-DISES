@@ -1,30 +1,42 @@
 
 rm(list=ls())
-library(MTS)
-library(doParallel)
+#library(MTS)
+varx_fun <- MTS::VARX
+#library(doParallel)
+#library(doMPI)
+#library(Rmpi)
+library(future)
+library(future.apply)
+library(future.batchtools)
+library(fBasics)
 
 source('./src/syn_gen.R')
 
 print(paste('syngen start',Sys.time()))
-#parallelization code
-n.cores <- parallel::detectCores()
-my.cluster<-parallel::makeCluster(n.cores,type = 'PSOCK')
-print(my.cluster)
-doParallel::registerDoParallel(cl = my.cluster)
-foreach::getDoParRegistered()
 
 #------------Synthetic generation----------------------
 
 #load in the prepared data
 load("out/data_prep_rdata.RData")
 
+#parameterization
+parm <- 'c'
+# 'a'  : kk=20; knn_pwr=-0.5; keysite='NHGC1'; original method
+# 'b'  : kk=20; knn_pwr=-0.5; keysite='NHGC1'; ss method 5 apr (empirical resid sampling)
+# 'c'  : kk=20; knn_pwr=-0.5; keysite='NHGC1'; 20 preds (sq_rnk,sq_diff_mn,sq_diff_sd,sq_diff_kurt,sq_diff_skew,sq_obs_seq)
+# 'd'  : kk=20; knn_pwr=-0.5; keysite='NHGC1'; lead 1-3 only + cumul sum
+
+
 #number of synthetic ensembles
-n_samp <- 100
+n_samp <- 10
+nsamp_lst = as.list(1:n_samp)
 #k for KNN sampling
 kk <- 20
+knn_pwr <- -0.5  #larger negative values weights early lead times higher for sampling
 #the site to use as the key site for resampling; generally main reservoir inflow site
-keysite <- which(site_names=="NHGC1") 
+keysite <- which(site_names=="NHGC1")
 parllel=F
+workrs=35
 
 #either input 'all' to fit to all available fit data and generate across all available observations
 #or input 'specify' and delineate specific dates in 'fit-start/end' and 'gen-start/end'
@@ -50,36 +62,37 @@ if(fit_gen_strategy=='all'){
 
 ixx_gen <- as.POSIXlt(seq(as.Date(gen_start),as.Date(gen_end),by='day'),tz = "UTC") #ixx_obs_forward   or   ixx_hefs
 
-save.image("./out/model-fit_rdata.RData")
+#save.image("./out/model-fit_rdata.RData")
 #-------------------------------synthetic forecast generation-------------------
-#array to store 
+#define function for parallel apply 
+syngen_fun <- function(x){message("x : ", x,Sys.time()); out <- syn_gen(x,kk,keysite,knn_pwr,fit_start,fit_end,gen_start,gen_end,leave_out_years,mpi,obs_forward_all_leads_gen,obs_forward_all_leads_hind,hefs_forward_cumul,hefs_forward_cumul_ens_avg,hefs_forward_cumul_ens_resid,hefs_forward_frac,ixx_hefs,ixx_obs_forward,varx_fun); return(out)}
+
 syn_hefs_forward <- array(NA,c(n_samp,n_sites,n_ens,length(ixx_gen),leads))
 
 if(parllel==TRUE){
-  #parallel 'foreach' implementation of synthetic forecast generation
-  syn_hefs_out<-foreach(m = 1:n_samp,.inorder=F)%dopar%{
-    syn_hefs<- syn_gen(1,kk,keysite,fit_start,fit_end,gen_start,gen_end,leave_out_years)
-    return(syn_hefs)
-  }
+  plan(multicore,workers=workrs)
+  fut_vec <- future_lapply(nsamp_lst,syngen_fun,future.seed=TRUE)
 
-  #compile to multidimensional array and save
+#compile to multidimensional array and save
   for(m in 1:n_samp){
-    syn_hefs_forward[m,,,,]<-syn_hefs_out[[m]]
+    syn_hefs_forward[m,,,,]<-fut_vec[[m]]
   }
 }
 
 if(parllel==FALSE){
   for(m in 1:n_samp){
-    syn_hefs_forward[m,,,,]<-syn_gen(1,kk,keysite,fit_start,fit_end,gen_start,gen_end,leave_out_years)
+    syn_hefs_forward[m,,,,]<-syngen_fun(m)
+    print(paste('m=',m,Sys.time()))
   }
 }
 
-saveRDS(syn_hefs_forward,file='out/syn_hefs_forward.rds')
+ 
+saveRDS(syn_hefs_forward,file=paste('out/syn_hefs_forward-',parm,'.rds',sep=''))
 saveRDS(ixx_gen,file='out/ixx_gen.rds')
 saveRDS(n_samp,file='out/n_samp.rds')
 
-rm(list = ls());gc()
-
 print(paste('syngen end',Sys.time()))
 
-stopCluster()
+rm(list = ls());gc()
+
+###################################################END##################################################
