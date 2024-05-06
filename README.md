@@ -4,31 +4,37 @@ Synthetic forecast model to support FIRO work under DISES funding. Version 2 is 
 The model is setup generically to run synthetic forecasts for any main hindcast location with an arbitrary number of associated sites. The main location is specified by the 'loc' variable at the top of all main workflow scripts, which will point to the location specific subdirectory (i.e. ./my_directory/_main_hindcast_location_) in the 'data' sub-repo once the data have been downloaded from the referenced Hydroshare resources. The user must also specify the 'keysite' variable as the primary site to condition the sampling procedure. Typically, this would be the main reservoir inflow point for a smaller system. For a system with multiple reservoir inflow points, it is up to user discretion, but one strategy is to use the largest (by annual inflow magnitude) inflow point. Recommended settings for these primary user defined variables are recommended below. The scripts will create and write to an 'out' sub-repo with a similar structure to the 'data' sub-repo. The scripts are setup, by default, to fit the model to all available hindcast data with some leftout years (calendar years) for validation and generate a user-defined number of samples across the entire observational record. These time data ranges can be modified by the user.
 
 ---
-Model is currently setup for synthetic forecast generation at New Hogan Lake system (NHG), including reservoir inflow (NHGC1) and downstream Mud Slough site (MSGC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/dfa02b83bbde4ae3888ffafeb4446a5b/). Recommended user-defined settings are:
+Setup for forecast generation at Prado dam system (ADO), including main reservoir inflow (ADOC1). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/ccffddde118f4145854c960295f520cb/). Starting user-defined settings are:
   
-loc = 'NHG'   
-keysite = 'NHGC1'   
+loc = 'ADO'   
+keysite = 'ADOC1'   
 n_samp = 100   
-leave_out_years = c(1995,2000,2005,2010,2015)   
 
 ---
-Setup for forecast generation at Lake Mendocino system (LAM), including reservoir inflow (LAMC1) and downstream local flows at Ukiah and Hopland (UKAC1, HOPC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/ccffddde118f4145854c960295f520cb/). Recommended user-defined settings are:
+Setup for forecast generation at Lake Mendocino system (LAM), including reservoir inflow (LAMC1) and downstream local flows at Ukiah and Hopland (UKAC1, HOPC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/ccffddde118f4145854c960295f520cb/). Starting user-defined settings are:
   
 loc = 'LAM'   
 keysite = 'LAMC1'   
 n_samp = 100   
-leave_out_years = c(1995,2000,2005,2010,2015)   
 
 ---
-Setup for forecast generation at selected sites of the Yuba-Feather system (YRS), including reservoir inflow at Lake Oroville (ORDC1) and New Bullards Bar (NBBC1) and downstream local flows at Marysville junction (MRYC1L). HEFS data is stored on a zip file [here](). Recommended user-defined settings are:
+Model is currently setup for synthetic forecast generation at New Hogan Lake system (NHG), including reservoir inflow (NHGC1) and downstream Mud Slough site (MSGC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/dfa02b83bbde4ae3888ffafeb4446a5b/). Starting user-defined settings are:
+  
+loc = 'NHG'   
+keysite = 'NHGC1'   
+n_samp = 100    
+
+ 
+
+---
+Setup for forecast generation at selected sites of the Yuba-Feather system (YRS), including reservoir inflow at Lake Oroville (ORDC1) and New Bullards Bar (NBBC1) and downstream local flows at Marysville junction (MRYC1L). HEFS data is stored on a zip file [here](). Starting user-defined settings are:
   
 loc = 'YRS'   
 keysite = 'ORDC1'   
-n_samp = 100   
-leave_out_years = c(1995,2000,2005,2010,2015)   
+n_samp = 100    
 
 ---
-#### Note: After downloading and extracting data from Hydroshare resources above, ensure local directory path for HEFS data is configured: './Synthetic-Forecast-v2-FIRO-DISES/data/_main_hindcast_location_/...', where '...' are the site specific sub-repos defined in 'Data' section below. Unzipping the files can result in duplication in the data path.
+#### Note: After downloading and extracting data from Hydroshare resources above, ensure local directory path for HEFS data is configured: './Synthetic-Forecast-v2-FIRO-DISES/data/_main_hindcast_location_/...', where '...' are the site specific sub-repos defined in 'Data' section below. Unzipping the files can result in duplication in the data path and this must be corrected for the code to function.
 
 ## Dependencies
 - R package 'MTS'
