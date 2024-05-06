@@ -27,7 +27,7 @@ n_samp = 100
  
 
 ---
-Setup for forecast generation at selected sites of the Yuba-Feather system (YRS), including reservoir inflow at Lake Oroville (ORDC1) and New Bullards Bar (NBBC1) and downstream local flows at Marysville junction (MRYC1L). HEFS data is stored on a zip file [here](). Starting user-defined settings are:
+Setup for forecast generation at selected sites of the Yuba-Feather system (YRS), including reservoir inflow at Lake Oroville (ORDC1) and New Bullards Bar (NBBC1) and downstream local flows at Marysville junction (MRYC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/29a7c696ee4e4766883078ca0d681884/). Starting user-defined settings are:
   
 loc = 'YRS'   
 keysite = 'ORDC1'   
