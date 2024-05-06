@@ -11,7 +11,7 @@ keysite = 'ADOC1'
 n_samp = 100   
 
 ---
-Setup for forecast generation at Lake Mendocino system (LAM), including reservoir inflow (LAMC1) and downstream local flows at Ukiah and Hopland (UKAC1, HOPC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/ccffddde118f4145854c960295f520cb/). Starting user-defined settings are:
+Setup for forecast generation at Lake Mendocino system (LAM), including reservoir inflow (LAMC1) and downstream local flows at Ukiah and Hopland (UKAC1, HOPC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/e51d9821c8d84682b642eb0818ac3137/). Starting user-defined settings are:
   
 loc = 'LAM'   
 keysite = 'LAMC1'   
