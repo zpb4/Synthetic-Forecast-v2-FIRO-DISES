@@ -8,21 +8,21 @@ Setup for forecast generation at Prado dam system (ADO), including main reservoi
   
 loc = 'ADO'   
 keysite = 'ADOC1'   
-n_samp = 100   
+n_samp = 10   
 
 ---
 Setup for forecast generation at Lake Mendocino system (LAM), including reservoir inflow (LAMC1) and downstream local flows at Ukiah and Hopland (UKAC1, HOPC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/e51d9821c8d84682b642eb0818ac3137/). Starting user-defined settings are:
   
 loc = 'LAM'   
 keysite = 'LAMC1'   
-n_samp = 100   
+n_samp = 10   
 
 ---
-Model is currently setup for synthetic forecast generation at New Hogan Lake system (NHG), including reservoir inflow (NHGC1) and downstream Mud Slough site (MSGC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/dfa02b83bbde4ae3888ffafeb4446a5b/). Starting user-defined settings are:
+Setup for synthetic forecast generation at New Hogan Lake system (NHG), including reservoir inflow (NHGC1) and downstream Mud Slough site (MSGC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/dfa02b83bbde4ae3888ffafeb4446a5b/). Starting user-defined settings are:
   
 loc = 'NHG'   
 keysite = 'NHGC1'   
-n_samp = 100    
+n_samp = 10   
 
  
 
@@ -31,7 +31,7 @@ Setup for forecast generation at selected sites of the Yuba-Feather system (YRS)
   
 loc = 'YRS'   
 keysite = 'ORDC1'   
-n_samp = 100    
+n_samp = 10   
 
 ---
 #### Note: After downloading and extracting data from Hydroshare resources above, ensure local directory path for HEFS data is configured: './Synthetic-Forecast-v2-FIRO-DISES/data/_main_hindcast_location_/...', where '...' are the site specific sub-repos defined in 'Data' section below. Unzipping the files can result in duplication in the data path and this must be corrected for the code to function.
