@@ -3,13 +3,15 @@
 rm(list=ls())
 library(fields)
 
-#----------------------------------------
-parm = 'b'
+loc = 'NHG'
 
-load("out/data_prep_rdata.RData")
-syn_hefs_forward <- readRDS(paste('out/syn_hefs_forward-',parm,'_plot-ens.rds',sep='')) #use only a slice of larger sample array
-ixx_gen <- readRDS('out/ixx_gen.rds') 
-n_samp <- readRDS('out/n_samp.rds') 
+#----------------------------------------
+parm = 'a'
+
+load(paste('out/',loc,'/data_prep_rdata.RData',sep=''))
+syn_hefs_forward <- readRDS(paste('out/',loc,'/syn_hefs_forward-',parm,'_plot-ens.rds',sep='')) #use only a slice of larger sample array
+ixx_gen <- readRDS(paste('out/',loc,'/ixx_gen.rds',sep='')) 
+n_samp <- readRDS(paste('out/',loc,'/n_samp.rds',sep='')) 
 
 #################################################################
 
@@ -31,6 +33,8 @@ syn_hefs_date_loc <- which(ixx_gen==obs_date)
 num_plot_rows <- min(n_samp+1,4)
 par(mfcol=c(num_plot_rows,4),mar=c(3,3,1,1),mgp=c(3,.4,0))
 ymax <- .5*max(obs[,cur_site],hefs_forward[cur_site,,,],syn_hefs_forward[,cur_site,,,])
+
+#ymax <- .5*max(obs[,cur_site],hefs_forward[cur_site,,,])
 
 for (ld in c(1,4,7,10)) {
   obs_idx <- obs_date_loc-ld #ref index for ensemble plots

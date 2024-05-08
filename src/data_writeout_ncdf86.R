@@ -3,11 +3,13 @@ rm(list=ls())
 library(lubridate)
 library(ncdf4)
 
+loc = 'YRS'
+
 #remove previous files if existing (netcdf will not overwrite files)
-unlink('./out/Qf-hefs86.nc',recursive=TRUE)
+unlink(paste('./out/',loc,'/Qf-hefs86.nc',sep=''),recursive=TRUE)
 #----------------------------------------
 
-load("./out/data_prep_rdata86.RData")
+load(paste('./out/',loc,'/data_prep_rdata86.RData',sep=''))
 
 #add a single entry dimension to match synthetic forecasts
 hefs_fwd<-array(NA,c(1,dim(hefs_forward)))
@@ -27,7 +29,7 @@ ld_dim<-ncdim_def('lead','',0:(dim(hefs_fwd)[5]-1))
 
 #write the variable to the netcdf file and save
 hefs_var<-ncvar_def('hefs','kcfs',dim=list(ens_dim,site_dim,ld_dim,trace_dim,date_dim))
-hefs_nc<-nc_create('./out/Qf-hefs86.nc',hefs_var,force_v4 = F)
+hefs_nc<-nc_create(paste('./out/',loc,'/Qf-hefs86.nc',sep=''),hefs_var,force_v4 = F)
 ncvar_put(hefs_nc,hefs_var,hefs_out)
 nc_close(hefs_nc)
 

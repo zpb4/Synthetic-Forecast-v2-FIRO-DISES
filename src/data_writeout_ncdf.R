@@ -3,20 +3,21 @@ rm(list=ls())
 library(lubridate)
 library(ncdf4)
 
-#remove previous files if existing (netcdf will not overwrite files)
-unlink('./out/Qf-hefs.nc',recursive=TRUE)
 
 #----------------------------------------
+loc <- 'YRS'
+parm <- 'r'
 
-load("./out/data_prep_rdata.RData")
-parm <- 'c'
+load(paste('./out/',loc,'/data_prep_rdata.RData',sep=''))
 
-unlink(paste('./out/Qf-syn',parm,'.nc',sep=''),recursive=TRUE)
+#remove previous files if existing (netcdf will not overwrite files)
+unlink(paste('./out/',loc,'/Qf-hefs.nc',sep=''),recursive=TRUE)
+unlink(paste('./out/',loc,'/Qf-syn',parm,'.nc',sep=''),recursive=TRUE)
 
-syn_hefs_forward <- readRDS(paste('./out/syn_hefs_forward-',parm,'.rds',sep=''))
-ixx_gen <- readRDS('./out/ixx_gen.rds') 
-n_samp <- readRDS('./out/n_samp.rds') 
-
+syn_hefs_forward <- readRDS(paste('./out/',loc,'/syn_hefs_forward-',parm,'.rds',sep=''))
+ixx_gen <- readRDS(paste('./out/',loc,'/ixx_gen.rds',sep='')) 
+n_samp <- readRDS(paste('./out/',loc,'/n_samp.rds',sep='')) 
+#syn_hefs_forward <- syn_hefs_forward[1:10,,,,]
 
 #add a single entry dimension to match synthetic forecasts
 hefs_fwd<-array(NA,c(1,dim(hefs_forward)))
@@ -36,7 +37,7 @@ ld_dim<-ncdim_def('lead','',0:(dim(hefs_fwd)[5]-1))
 
 #write the variable to the netcdf file and save
 hefs_var<-ncvar_def('hefs','kcfs',dim=list(ens_dim,site_dim,ld_dim,trace_dim,date_dim))
-hefs_nc<-nc_create('./out/Qf-hefs.nc',hefs_var,force_v4 = F)
+hefs_nc<-nc_create(paste('./out/',loc,'/Qf-hefs.nc',sep=''),hefs_var,force_v4 = F)
 ncvar_put(hefs_nc,hefs_var,hefs_out)
 nc_close(hefs_nc)
 
@@ -52,7 +53,7 @@ ld_dim<-ncdim_def('lead','',0:(dim(syn_hefs_forward)[5]-1))
 
 #write the variable to the netcdf file and save
 shefs_var<-ncvar_def('syn','kcfs',dim=list(ens_dim,site_dim,ld_dim,trace_dim,date_dim))
-shefs_nc<-nc_create(paste('./out/Qf-syn',parm,'.nc',sep=''),shefs_var,force_v4 = F)
+shefs_nc<-nc_create(paste('./out/',loc,'/Qf-syn',parm,'.nc',sep=''),shefs_var,force_v4 = F)
 ncvar_put(shefs_nc,shefs_var,shefs_out)
 nc_close(shefs_nc)
 
