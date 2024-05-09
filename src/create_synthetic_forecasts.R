@@ -50,24 +50,33 @@ load(paste('out/',loc,'/data_prep_rdata.RData',sep=''))
 
 #/////////////////////////////////////////////////
 #Other user defined settings that can be modified
-correct_leads = F
-lds_to_correct = 1:(leads-1)
-fix_order = F
-use_ar = F
-refrac = F
+correct_leads = T   # whether to use mean shift/var shift correction
+lds_to_correct = 1:leads  # how many leads to apply the correction to (max of 'leads-1')
+fix_order = F       # whether to resort candidate cumul ensemble to match order of sampled cumul ensemble for fractionation
+use_ar = F          # whether to use AR1 model to generate cumulative ensemble members (else uses resample errors directly)
+refrac = T          # whether to refractionate iteratively to maintain original cumul ensemble; only matters when correct_leads = T
 
 #parameterization
-parm <- 'a'
+parm <- 'i'
 
-# 'a'  : kk=20; knn_pwr=-1; keysite='NHGC1'; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = F 
-# 'b'  : kk=10; knn_pwr=-1; keysite='NHGC1'; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = F 
-# 'c'  : kk=10; knn_pwr=-1; keysite='NHGC1'; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, no decay 
-# 'd'  : kk=10; knn_pwr=-1; keysite='NHGC1'; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, no decay 
-# 'e'  : kk=10; knn_pwr=-1; keysite='NHGC1'; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, decay=-1.5 + 1.25 scale 
-# 'f'  : kk=10; knn_pwr=-1; keysite='NHGC1'; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, decay=-1.5 + 1.25 scale 
+# 'a'  : kk=20; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = F 
+# 'b'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = F 
+# 'c'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, no decay 
+# 'd'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, no decay 
+# 'e'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, decay=-1.5 + 1.25 scale 
+# 'f'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, decay=-1.5 + 1.25 scale 
+# 'g'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, no decay, no sdev shift
+# 'h'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, no decay, no sdev shift
+
+# 'i'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, decay2=c(0.725,0.575,0.475,0.44,0.41,0.2,0.2,0.1,0,0,0,0,0,0,0)
+# 'j'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, decay2=c(0.725,0.575,0.475,0.44,0.41,0.2,0.2,0.1,0,0,0,0,0,0,0)
+# 'k'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=T, fix_order = F, correct_leads = T, refrac=T; correct all leads, decay2=c(0.725,0.575,0.475,0.44,0.41,0.2,0.2,0.1,0,0,0,0,0,0,0)
+
+#current setting for decay 2
+# 'i'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, decay2=c(0.7,0.55,0.45,0.43,0.42,0.2,0.2,0.1,0,0,0,0,0,0,0) -- near 'optimal' values for NBBC1
 
 #k for KNN sampling
-kk <- 20
+kk <- 10
 knn_pwr <- -1  #larger negative values weights early lead times higher for sampling
 parllel=T
 workrs=10
@@ -103,7 +112,7 @@ if(parllel==TRUE){
   }
 }
 
-
+#sequential processing if no parallel flag
 if(parllel==FALSE){
   for(m in 1:n_samp){
     syn_hefs_forward[m,,,,]<-syngen_fun(m)

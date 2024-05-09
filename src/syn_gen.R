@@ -165,11 +165,17 @@ ixx_obs_forward,varx_fun,correct_leads,lds_to_correct,fix_order,use_ar,refrac) {
   wts <- rep(1,kk) / 1:kk / rep(tot,kk)
   
   #decay vector for correction by leads
-  my_power2 <- -1.5    #larger neg values = faster decay, more weight on early leads
-  decay2 <- (1:(leads))^my_power2 / sum(((1:leads)^my_power2)) #k dim vector
-  ##fix_lds = 7
-  ##decay2 <- (1:fix_lds)^my_power2 / sum(((1:fix_lds)^my_power2))
-  ##decay2 <- c(decay2,rep(decay2[fix_lds],(leads-fix_lds)))
+  #define with decay function
+  #my_power2 <- -1    #larger neg values = faster decay, more weight on early leads
+  #decay2 <- (1:(leads))^my_power2 / sum(((1:leads)^my_power2)) * c(rep #k dim vector
+  #manually tune
+  decay2 <- c(0.7,0.55,0.45,0.43,0.42,0.2,0.2,0.1,0,0,0,0,0,0,0)
+  
+  estBetaParams <- function(mu, var) {
+    alpha <- ((1 - mu) / var - 1 / mu) * mu ^ 2
+    beta <- alpha * (1 / mu - 1)
+    return(params = list(alpha = alpha, beta = beta))
+  }
   
   #the resampled locations via KNN to use
   set.seed(seed+1)
@@ -198,7 +204,7 @@ ixx_obs_forward,varx_fun,correct_leads,lds_to_correct,fix_order,use_ar,refrac) {
       #calculate final 15-day ahead forecasts
       all_leads_gen[j,e,,] <- sapply(1:leads,function(x) {all_leads_gen_frac[j,e,,x]*cumul_gen[j,e,]})
     }
-    #1d lead mean shift
+    #arrays for mean and stdev shift implementation
     hefs_fwd_fit <- hefs_forward[j,,ixx_hefs%in%ixx_fit,]
     hefs_fwd_cumul_fit <- hefs_forward_cumul[j,,ixx_hefs%in%ixx_fit]
     obs_fwd_fit <- obs_forward_all_leads_hind[j,ixx_hefs_obs_fwd%in%ixx_fit,]
@@ -213,6 +219,10 @@ ixx_obs_forward,varx_fun,correct_leads,lds_to_correct,fix_order,use_ar,refrac) {
         mn_scale <- hefs_mn / obs_fwd_fit[knn_lst,k] * obs_forward_all_leads_gen[j,,k] / pred_mn  
         mn_scale[is.na(mn_scale)==T|mn_scale==0|mn_scale==Inf|mn_scale==-Inf]<-1
         #calculate the amount to add to each member of the ensemble for the mean shift and apply it
+        #beta distribution model for variability in skill correction; not yet implemented or tested
+        ##decay2 <- rbeta(length(pred_mn),shape1 = estBetaParams(decay2[k],.01)$alpha,shape2 = estBetaParams(decay2[k],.01)$beta)
+        
+        #additive value to apply across all ensemble members
         mn_add <- (pred_mn * mn_scale - pred_mn) * decay2[k]
         all_leads_gen[j,,,k] <- all_leads_gen[j,,,k] + matrix(rep(mn_add,each=n_ens),ncol=length(ixx_gen),byrow=F)
         
@@ -228,7 +238,8 @@ ixx_obs_forward,varx_fun,correct_leads,lds_to_correct,fix_order,use_ar,refrac) {
         all_leads_gen[j,,,k] <- (all_leads_gen[j,,,k] - matrix(rep((pred_mn + mn_add),each=n_ens),ncol=length(ixx_gen),byrow=F)) * matrix(rep(sd_scale,each=n_ens),ncol=length(ixx_gen),byrow=F) + matrix(rep((pred_mn + mn_add),each=n_ens),ncol=length(ixx_gen),byrow=F)
         
         #iteratively refractionate ensemble to maintain generated cumulative ensemble
-        if(refrac==T){
+        #no refrac necessary for k = leads
+        if(refrac==T & k<leads){
           #refractionate remaining cumulative ensemble
           #subtract cumulative ensemble up to lead k from total cumul ensemble 
           cumul_gen_step[,] = cumul_gen[j,,] - apply(all_leads_gen[j,,,1:k],c(1,2),sum)
@@ -239,9 +250,10 @@ ixx_obs_forward,varx_fun,correct_leads,lds_to_correct,fix_order,use_ar,refrac) {
             cumul_gen_mat[,,i] <- cumul_gen_step
           }
           #recalculate fractionation on remaining leads and multiply by remaining cumul ensemble
-          if(k<length(lds_to_correct)){
+          if(k<(leads-1)){
             hefs_frac_step <- aperm(apply(hefs_fwd_fit[,knn_lst,(k+1):leads],c(1,2),function(x){x/sum(x)}),c(2,3,1))}
-          else{
+          #apply function drops a dimension with size 1, so need to modify at (leads-1)
+          if(k==(leads-1)){
             hefs_fr <- apply(hefs_fwd_fit[,knn_lst,(k+1):leads],c(1,2),function(x){x/sum(x)})
             hefs_frac_step <- array(NA,c(dim(hefs_fr),1))
             hefs_frac_step[,,1] <- hefs_fr}
