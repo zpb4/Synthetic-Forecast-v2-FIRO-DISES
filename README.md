@@ -67,11 +67,9 @@ Note2: The data files for each location contain a 6 year subset of validation ye
 ## Workflow
 ### 1. Data Processing 
 Note: Specification of the 'loc' variable in these scripts will process all associated sites
-Processes the forecast and observation data to standard R data structures for Period of Record (POR) hindcast and shorter run for the 1986 event:
+Processes the forecast and observation data to standard R data structures for Period of Record (POR) hindcast:
 1) ./src/data_processing.R
    - all HEFS and observations data files for POR
-2) ./src/data_processing_hefs86.R
-   - only HEFS for a short period around the early Feb extreme event in 1986
    
 ### 2. Optimization
 Note: Must specify the 'loc' variable for the overall location and the 'keysite_name' variable for the site used to condition the kNN sampling. Other user defined parameters are set to the default used in the study, including '5fold-test' for the fully out-of-sample 5-fold procedure outlined in the manuscript.  
@@ -84,12 +82,15 @@ Optimizes the threshold curve that constrains the scaling procedure for syntheti
    - synthetic generation function used by the optimization procedure.
 
 ### 3. Generation
+Note: Must specify the 'loc' variable for the overall location and the 'keysite_name' variable for the site used to condition the kNN sampling. Other user defined parameters are set to the default used in the study, including '5fold-test' for the fully out-of-sample 5-fold procedure 
 The user needs to run the following scripts in this order for the model to produce the synthetic forecasts. _Note that the ./src/create_synthetic_forecasts.R script calls the function ./src/syn_gen.R, which holds the actual synthetic forecast model_:
 1) ./src/create_synthetic_forecasts.R
 2) ./src/syn_gen.R
 
 The output of the first two steps is an R array that is saved as an R data structure file (.rds). In order to further post-process data for transfer to other models, languages, etc, there are two output options:   
 
+4) ./src/5fold-val_collate.R
+   - combines the folds to a single array for the 5-fold generation schemes ('5fold', '5fold-test')
 3) ./src/data_writeout.R
    - writes individual .csv files in the same format as the input HEFS .csv files for each generated sample
 4) ./src/data_writeout_ncdf.R
@@ -98,8 +99,6 @@ The output of the first two steps is an R array that is saved as an R data struc
    - slices a 10x sample subset from the generated synthetic forecast array for plotting; the raw arrays for large sample runs (e.g. 100 samples) require too much RAM for typical personal computers
 
 All scripts create and output metadata to the ./out/_main_hindcast_location_/ subdirectory. For sites with separate 1986 data, there are separate scripts with a '_86.R' suffix to process those specific data subsets.  
-
-Finally, there is a plotting script ./src/plot_ensembles.R which can be used for preliminary visualization of the synthetic forecast performance. 
 
 ## 4. Verification
 
