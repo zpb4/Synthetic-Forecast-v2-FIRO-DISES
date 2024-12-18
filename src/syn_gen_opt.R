@@ -1,28 +1,12 @@
 
-syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_start,fit_end,gen_start,gen_end,leave_out_years,
+syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,diff,lo,sig_a,sig_b,fit_start,fit_end,cal_years,val_years,
                      obs_forward_all_leads,obs_forward_all_leads_hind,hefs_forward,ixx_hefs,
                      ixx_obs_forward) {
   
-  #n_samp = the number of synthetic ensembles to create
-  #kk = the k used in KNN resampling
-  #keysite = an index for which site should be used to drive resampling  
-  #ixx_gen = date object that spans the length of the desired synthetic forecasts
-  #ixx_fit = date object from hindcast period to fit model, excluding and 'leave out years' specified in model setup
-  
-  #dimensional refs:
-  #k = # of leads
-  #ne = # of ensembles
-  #nsite = # of sites
-  #n = time dimension
-  #library(MTS)
-  #library(future)
-  #library(parallel)
-  #library(doParallel)
-  #library(doMPI)
-  #load('./out/data_prep_rdata.RData')
+
   set.seed(seed)
   
-  ixx_gen <- as.POSIXlt(seq(as.Date(gen_start),as.Date(gen_end),by='day'),tz = "UTC") 
+  ixx_gen <- as.POSIXlt(seq(as.Date(fit_start),as.Date(fit_end),by='day'),tz = "UTC") 
   ixx_obs_forward <- as.POSIXlt(seq(as.Date(ixx_obs_forward[1]),as.Date(ixx_obs_forward[length(ixx_obs_forward)]),by='day'),tz = "UTC")
   ixx_hefs <- as.POSIXlt(seq(as.Date(ixx_hefs[1]),as.Date(ixx_hefs[length(ixx_hefs)]),by='day'),tz = "UTC")
   ixx_obs <- as.POSIXlt(seq(as.Date(ixx_obs[1]),as.Date(ixx_obs[length(ixx_obs)]),by='day'),tz = "UTC")
@@ -40,13 +24,21 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_sta
   
   ixx_fit_all_wy <- wy_fun(ixx_fit_all)
   
-  trn_idx <- !(ixx_fit_all_wy$year%in%(leave_out_years-1900))
-  ixx_fit <- ixx_fit_all[trn_idx] #fit years excluding leave out years
+  cal_idx <- (ixx_fit_all_wy$year%in%(cal_years-1900))
+  ixx_fit <- ixx_fit_all[cal_idx] #fit years excluding leave out years
   ixx_fit <- ixx_fit[ixx_fit%in%ixx_obs_forward] #ensure all fit years are in the 'ixx_obs_forward' index, remove if not
   ixx_hefs_obs_fwd <- ixx_hefs[ixx_hefs%in%ixx_obs_forward]
   
+  if(length(val_years)>=1){
+    ixx_gen_all_wy <- wy_fun(ixx_gen)
+    gen_idx <- ixx_gen_all_wy$year%in%(val_years-1900)
+    ixx_gen <- ixx_gen[gen_idx]}
+  
+  if(length(val_years)==0){
+    ixx_gen <- ixx_gen[ixx_gen%in%ixx_hefs]
+  }
+  
   #some error catching
-  if (n_samp < 1 | !is.numeric(n_samp) | n_samp%%1!=0) {stop("n_samp is not a valid entry")}
   if (kk < 1 | !is.numeric(kk) | kk%%1!=0) {stop("k is not a valid entry")}
   if (ixx_gen[1] < ixx_obs_forward[1] | ixx_gen[length(ixx_gen)] > ixx_obs_forward[length(ixx_obs_forward)]) {
     stop("simulation period outside available observational period")
@@ -61,9 +53,8 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_sta
 
   #for knn, weigh earlier leads more than later leads
   my_power <- knn_pwr
-  ##w <- 1:(leads+1)
   w <- 1:leads
-  decay <- w^my_power / sum(w^my_power)
+  decay <- w^my_power / sum(w^my_power) 
   
   #set the key observation-based covariate values for the simulation
   obs_forward_all_leads_gen <- obs_forward_all_leads[,ixx_obs_forward%in%ixx_gen,,drop=FALSE]
@@ -81,11 +72,11 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_sta
   knn_dist <- sapply(1:ncol(gen_knn_data),function(x){
     sqrt(colSums(decay*(gen_knn_data[,x] - fit_knn_data)^2))
   })
+  #diag(knn_dist) <- 10*max(knn_dist)   #so that we don't sample "in sample" events
 
   #the resampled locations viaa KNN to use
   #note: vectors that have zero distance will not be resampled; prevents resampling of same event where fit and gen intersect
   knn_lst <- apply(knn_dist,2,function(x) {x[x==0]<-NA;sample(order(x)[1:kk],size=1,prob=wts)})
-
   rm(gen_knn_data,fit_knn_data)
   gc()
   #######################################################################################################
@@ -95,15 +86,15 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_sta
   
   #the fractions to sample from
   hefs_forward_resamp_sub <- hefs_forward[,,ixx_hefs%in%ixx_obs_forward,,drop=FALSE]
-  hefs_forward_resamp <- hefs_forward[,,ixx_hefs_obs_fwd%in%ixx_fit,,drop=FALSE]
+  hefs_forward_resamp <- hefs_forward_resamp_sub[,,ixx_hefs_obs_fwd%in%ixx_fit,,drop=FALSE]
   
   #final array for the ensemble forecasts at all lead times
-  all_leads_gen <- array(NA,c(n_sites,n_ens,n_gen,leads))
+  all_leads_gen <- array(NA,c(1,n_ens,n_gen,leads))
   
   my_power <- scale_pwr
   w <- 1:leads
   decay <- (w^my_power / sum(w^my_power)) 
-  hi = hi
+  hi = lo+diff
   lo = lo
   dcy <- (decay-min(decay)) * (hi-lo)/(max(decay)-min(decay)) + lo
 
@@ -111,40 +102,32 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_sta
   
   #plot(seq(-2,2,0.1),sigmoid_fun(seq(-2,2,0.1),1,0),type='l')
   
-  for (j in 1:n_sites) {
-    HEFS_ens_mean_resamp_old <- apply(hefs_forward_resamp[j,,knn_lst,],FUN=mean,c(2,3))
-    #what to add to adjust the resampled HEFS ensemble
-    HEFS_scale <-  obs_forward_all_leads_gen[j,,]/obs_forward_all_leads_fit[j,knn_lst,] 
-    #HEFS_scale[which(is.na(HEFS_scale) | HEFS_scale==Inf | HEFS_scale > ratio_threshold)] <- 1
-    for(k in 1:leads){
-      HEFS_scale[which(is.na(HEFS_scale[,k]) | HEFS_scale[,k]==Inf),k] <- 1
-      HEFS_sc <- HEFS_scale[,k]
+
+  ##HEFS_ens_mean_resamp_old <- apply(hefs_forward_resamp[keysite,,knn_lst,],FUN=mean,c(2,3))
+  #what to add to adjust the resampled HEFS ensemble
+  HEFS_scale <-  obs_forward_all_leads_gen[keysite,,]/obs_forward_all_leads_fit[keysite,knn_lst,] 
+  #HEFS_scale[which(is.na(HEFS_scale) | HEFS_scale==Inf | HEFS_scale > ratio_threshold)] <- 1
+  for(k in 1:leads){
+    HEFS_scale[which(is.na(HEFS_scale[,k]) | HEFS_scale[,k]==Inf),k] <- 1
+    HEFS_sc <- HEFS_scale[,k]
       
-      obs_sc <- obs_forward_all_leads_gen[j,,k]
-      obs_sc[obs_sc<=0]<-min(obs_sc[obs_sc>0])
-      obs_sc<-log(obs_sc)
-      obs_scale <- scale(obs_sc)
-      
-      ratio_threshold <- sigmoid_fun(obs_scale,sig_a,sig_b) * (dcy[k]-1) + 1
-      
-      #allow unlimited scaling for largest 10 events
-      ##abv_thresh <- order(obs_forward_all_leads_fit[j,knn_lst,k],decreasing = T)[10]
-      ##ext_scale <- obs_forward_all_leads_gen[j,,k] / obs_forward_all_leads_fit[j,knn_lst,k][abv_thresh]
-      ##ext_scale[ext_scale < 1] <- 1
-      ##ratio_threshold <- ratio_threshold * ext_scale
-      #HEFS_sc[which(obs_sc > obs_sc[abv_thresh])] <- HEFS_scale[which(obs_sc > obs_sc[abv_thresh]),k]
-      
-      #accept/reject format for ratios exceeding threshold
-      HEFS_sc[which(HEFS_sc > ratio_threshold)]<-1
-      
-      HEFS_scale[,k]<-HEFS_sc
-    }
-    #make adjustments for each ensemble member
-    for(e in 1:n_ens) {
-      all_leads_gen[j,e,,] <- (hefs_forward_resamp[j,e,knn_lst,])*HEFS_scale
-    }
+    obs_sc <- obs_forward_all_leads_gen[keysite,,k]
+    obs_sc[obs_sc<=0]<-min(obs_sc[obs_sc>0]) # set all 0 to min flow, log can't take 0s
+    obs_sc<-log(obs_sc) #log of obs to make approx normal for scaling
+    obs_scale <- scale(obs_sc)  #scale obs
     
+    #ratio threshold is value between hi and lo threshold dependent on obs size via the sigmoid function
+    ratio_threshold <- sigmoid_fun(obs_scale,sig_a,sig_b) * (dcy[k]-1) + 1
+    HEFS_sc[which(HEFS_sc > ratio_threshold)]<-1  # any ratios that exceed the upper bound set to 1, i.e. accept the original HEFS_fit value
+    #alternate approach to set ratios that exceed the threshold to the threshold value
+    #HEFS_sc[which(obs_forward_all_leads_gen[j,,k]>pcntile_val)]<-HEFS_scale[which(obs_forward_all_leads_gen[j,,k]>pcntile_val),k]  
+    HEFS_scale[,k]<-HEFS_sc
   }
+  #make adjustments for each ensemble member
+  for(e in 1:n_ens) {
+    all_leads_gen[1,e,,] <- (hefs_forward_resamp[keysite,e,knn_lst,])*HEFS_scale
+  }
+    
   rm(hefs_forward_resamp,hefs_forward_resamp_sub,hefs_forward,obs_forward_all_leads_fit,
      obs_forward_all_leads_gen,obs_forward_all_leads_hind,obs_forward_all_leads)
   gc()  

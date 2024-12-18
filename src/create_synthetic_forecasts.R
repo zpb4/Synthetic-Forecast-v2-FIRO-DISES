@@ -1,17 +1,64 @@
 
+args = commandArgs(trailingOnly=TRUE)
+print(paste('task #',args[1]))
+idx = as.numeric(args[1])
 
 #/////////////////////////////////////////
 #Primary user defined settings
 
-loc = 'LAM'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
-n_samp = 10             #number of samples to generate
-keysite_name = 'LAMC1'   #specific site ID for 'keysite' which conditions the kNN sampling
+loc = 'YRS'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
+n_samp = 100               #number of samples to generate
+keysite_name = 'NBBC1'   #specific site ID for 'keysite' which conditions the kNN sampling
 fit_gen_strategy = 'all'  #'all' fits to all available fit data and generate across all available observations
+cal_val_setup = '5fold-test'
+pcnt_opt = 0.99
 
-lv_out_samps = 6          #how many validation years to leave out
-opt_leave_out = readRDS(paste('./data/',loc,'/opt_val_years_samp=',lv_out_samps,'.rds',sep=''))  #optimal validation subset
-leave_out_years = opt_leave_out #years from 'fit' period to leave out of fitting for model validation, use opt value or input vector of water years, e.g. c(1995,2000,2005,etc)
-#leave_out_years = c()
+if(cal_val_setup!='5fold-test'){
+  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_',keysite_name,'.rds',sep=''))}
+if(cal_val_setup=='5fold-test'){
+  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_',keysite_name,'-',idx,'.rds',sep=''))}
+
+#orimary hyperparameters
+kk <- 30           #sampling window
+knn_pwr <- 0     #larger negative values weights early lead times higher for sampling
+
+scale_pwr = opt_params[2] 
+hi = opt_params[3]  
+lo = opt_params[4]   
+sig_a = opt_params[5] 
+sig_b = opt_params[6] 
+
+#parallel configuration
+parllel=T          #use parallel processing
+workrs=5        #number of workers (cores) to use
+
+if(cal_val_setup=='cal'){
+  leave_out_years = c()
+}
+
+if(cal_val_setup=='val'){
+  lv_out_samps = 6          #how many validation years to leave out
+  opt_leave_out = readRDS(paste('./data/',loc,'/opt_val_years_samp=',lv_out_samps,'.rds',sep=''))  #optimal validation subset
+  leave_out_years = opt_leave_out #years from 'fit' period to leave out of fitting for model validation, use opt value or input vector of water years, e.g. c(1995,2000,2005,etc)
+}
+
+if(cal_val_setup=='wet'){
+  lv_out_samps = 6          #how many validation years to leave out
+  opt_leave_out = readRDS(paste('./data/',loc,'/wet_val_years_samp=',lv_out_samps,'.rds',sep=''))  #optimal validation subset
+  leave_out_years = opt_leave_out #years from 'fit' period to leave out of fitting for model validation, use opt value or input vector of water years, e.g. c(1995,2000,2005,etc)
+}
+
+if(cal_val_setup=='5fold' | cal_val_setup=='5fold-test'){
+  wy = 90:119
+  wy_arr = array(NA,c(5,6))
+  set.seed(1)
+  for(i in 1:5){
+    samp = sample(wy,6,replace=F)
+    wy_arr[i,] = samp + 1900
+    wy = wy[!(wy%in%samp)]
+  }
+  leave_out_years = wy_arr[idx,]
+}
 
 print(leave_out_years)
 
@@ -47,39 +94,7 @@ source('./src/syn_gen.R')
 
 #load in the prepared data
 load(paste('out/',loc,'/data_prep_rdata.RData',sep=''))
-
-#/////////////////////////////////////////////////
-#Other user defined settings that can be modified
-correct_leads = T   # whether to use mean shift/var shift correction
-lds_to_correct = 1:leads  # how many leads to apply the correction to (max of 'leads-1')
-fix_order = F       # whether to resort candidate cumul ensemble to match order of sampled cumul ensemble for fractionation
-use_ar = F          # whether to use AR1 model to generate cumulative ensemble members (else uses resample errors directly)
-refrac = T          # whether to refractionate iteratively to maintain original cumul ensemble; only matters when correct_leads = T
-
-#parameterization
-parm <- 'i'
-
-# 'a'  : kk=20; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = F 
-# 'b'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = F 
-# 'c'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, no decay 
-# 'd'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, no decay 
-# 'e'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, decay=-1.5 + 1.25 scale 
-# 'f'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, decay=-1.5 + 1.25 scale 
-# 'g'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, no decay, no sdev shift
-# 'h'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, no decay, no sdev shift
-
-# 'i'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, decay2=c(0.725,0.575,0.475,0.44,0.41,0.2,0.2,0.1,0,0,0,0,0,0,0)
-# 'j'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=F; correct all leads, decay2=c(0.725,0.575,0.475,0.44,0.41,0.2,0.2,0.1,0,0,0,0,0,0,0)
-# 'k'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=T, fix_order = F, correct_leads = T, refrac=T; correct all leads, decay2=c(0.725,0.575,0.475,0.44,0.41,0.2,0.2,0.1,0,0,0,0,0,0,0)
-
-#current setting for decay 2
-# 'i'  : kk=10; knn_pwr=-1; obs0 + obs fwd sample, use_ar=F, fix_order = F, correct_leads = T, refrac=T; correct all leads, decay2=c(0.7,0.55,0.45,0.43,0.42,0.2,0.2,0.1,0,0,0,0,0,0,0) -- near 'optimal' values for NBBC1
-
-#k for KNN sampling
-kk <- 10
-knn_pwr <- -1  #larger negative values weights early lead times higher for sampling
-parllel=T
-workrs=10
+rm(hefs_forward_cumul,hefs_forward_frac,hefs_forward_cumul_ens_avg,hefs_forward_cumul_ens_resid)
 
 #index for selected keysite
 keysite <- which(site_names==keysite_name)
@@ -94,11 +109,12 @@ if(fit_gen_strategy=='all'){
 
 ixx_gen <- as.POSIXlt(seq(as.Date(gen_start),as.Date(gen_end),by='day'),tz = "UTC") #ixx_obs_forward   or   ixx_hefs
 
-#save.image("./out/model-fit_rdata.RData")
-#-------------------------------synthetic forecast generation-------------------
-#define function for parallel apply 
-syngen_fun <- function(x){message("x : ", x,Sys.time()); out <- syn_gen(x,kk,keysite,knn_pwr,fit_start,fit_end,gen_start,gen_end,leave_out_years,mpi,obs_forward_all_leads_gen,obs_forward_all_leads_hind,hefs_forward_cumul,hefs_forward_cumul_ens_avg,hefs_forward_cumul_ens_resid,hefs_forward_frac,ixx_hefs,
-                                                                        ixx_obs_forward,varx_fun,correct_leads,lds_to_correct,fix_order,use_ar,refrac); return(out)}
+#///////////////////////////////////////////////////////////////////////////////////////////////////
+#synthetic generation
+
+syngen_fun <- function(x){message("x : ", x,Sys.time()); out <- syn_gen(x,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_start,fit_end,gen_start,gen_end,leave_out_years,
+                                                                        obs_forward_all_leads,obs_forward_all_leads_hind,hefs_forward,ixx_hefs,
+                                                                        ixx_obs_forward)}
 
 syn_hefs_forward <- array(NA,c(n_samp,n_sites,n_ens,length(ixx_gen),leads))
 
@@ -120,8 +136,11 @@ if(parllel==FALSE){
   }
 }
 
- 
-saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward-',parm,'.rds',sep=''))
+if(cal_val_setup != '5fold' & cal_val_setup!='5fold-test'){
+  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))}
+if(cal_val_setup == '5fold' | cal_val_setup =='5fold-test'){
+  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'-',idx,'.rds',sep=''))}
+
 saveRDS(ixx_gen,file=paste('out/',loc,'/ixx_gen.rds',sep=''))
 saveRDS(n_samp,file=paste('out/',loc,'/n_samp.rds',sep=''))
 
