@@ -6,31 +6,39 @@ idx = as.numeric(args[1])
 #/////////////////////////////////////////
 #Primary user defined settings
 
-loc = 'YRS'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
+loc = 'LAM'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
 n_samp = 100               #number of samples to generate
-keysite_name = 'ORDC1'   #specific site ID for 'keysite' which conditions the kNN sampling
+keysite_name = 'LAMC1'   #specific site ID for 'keysite' which conditions the kNN sampling
 fit_gen_strategy = 'all'  #'all' fits to all available fit data and generate across all available observations
 cal_val_setup = '5fold'
 pcnt_opt = 0.99
 
-if(cal_val_setup!='5fold-test'){
-  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_',keysite_name,'.rds',sep=''))}
-if(cal_val_setup=='5fold-test'){
-  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_',keysite_name,'-',idx,'.rds',sep=''))}
+#scaling specifications
+scale_site = 'LAMC1'
+evt_to_scale = 1  #which event, by rank, to scale
+scale_rng = 15    # +/- days to implement linear scaling framework to data
+return_period = 100
 
-#orimary hyperparameters
+load(paste('out/',loc,'/data_prep_rdata_scaled_',scale_site,'_evt=',evt_to_scale,'_rtn=',return_period,'.RData',sep=''))
+
+if(cal_val_setup!='5fold-test'){
+  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_',keysite_name,'_scaled_',scale_site,'_evt=',evt_to_scale,'_',evt_date,'_rtn=',return_period,'.rds',sep=''))}
+if(cal_val_setup=='5fold-test'){
+  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_',keysite_name,'-',idx,'_scaled_',scale_site,'_evt=',evt_to_scale,'_',evt_date,'_rtn=',return_period,'.rds',sep=''))}
+
+#primary hyperparameters
 kk <- 30           #sampling window
 knn_pwr <- 0     #larger negative values weights early lead times higher for sampling
 
-scale_pwr = opt_params[2] 
-hi = opt_params[3]  
-lo = opt_params[4]   
-sig_a = opt_params[5] 
-sig_b = opt_params[6] 
+scale_pwr = opt_params[1] 
+hi = opt_params[2]  
+lo = opt_params[3]   
+sig_a = opt_params[4] 
+sig_b = opt_params[5] 
 
 #parallel configuration
 parllel=T          #use parallel processing
-workrs=5        #number of workers (cores) to use
+workrs=5           #number of workers (cores) to use
 
 if(cal_val_setup=='cal'){
   leave_out_years = c()
@@ -81,20 +89,18 @@ print(paste('syngen start',Sys.time()))
 
 #rm(list=ls())
 #library(MTS)
-#varx_fun <- MTS::VARX
+varx_fun <- MTS::VARX
 #library(doParallel)
 #library(doMPI)
 #library(Rmpi)
 library(future)
 library(future.apply)
-#library(future.batchtools)
-#library(fBasics)
+library(future.batchtools)
+library(fBasics)
 
 source('./src/syn_gen.R')
 
-#load in the prepared data
-load(paste('out/',loc,'/data_prep_rdata.RData',sep=''))
-rm(hefs_forward_cumul,hefs_forward_frac,hefs_forward_cumul_ens_avg,hefs_forward_cumul_ens_resid)
+#rm(hefs_forward_cumul,hefs_forward_frac,hefs_forward_cumul_ens_avg,hefs_forward_cumul_ens_resid)
 
 #index for selected keysite
 keysite <- which(site_names==keysite_name)
@@ -137,9 +143,9 @@ if(parllel==FALSE){
 }
 
 if(cal_val_setup != '5fold' & cal_val_setup!='5fold-test'){
-  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))}
+  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'_scaled_',scale_site,'_evt=',evt_to_scale,'_rtn=',return_period,'.rds',sep=''))}
 if(cal_val_setup == '5fold' | cal_val_setup =='5fold-test'){
-  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'-',idx,'.rds',sep=''))}
+  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'-',idx,'_scaled_',scale_site,'_evt=',evt_to_scale,'_rtn=',return_period,'.rds',sep=''))}
 
 saveRDS(ixx_gen,file=paste('out/',loc,'/ixx_gen.rds',sep=''))
 saveRDS(n_samp,file=paste('out/',loc,'/n_samp.rds',sep=''))

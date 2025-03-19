@@ -1,5 +1,5 @@
 
-syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,diff,lo,sig_a,sig_b,fit_start,fit_end,cal_years,val_years,
+syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,dif,lo,sig_a,sig_b,fit_start,fit_end,cal_years,val_years,
                      obs_forward_all_leads,obs_forward_all_leads_hind,hefs_forward,ixx_hefs,
                      ixx_obs_forward) {
   
@@ -53,7 +53,8 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,diff,lo,sig_a,sig_b,fit_s
 
   #for knn, weigh earlier leads more than later leads
   my_power <- knn_pwr
-  w <- 1:leads
+  w <- 1:(leads+1)
+  #w <- 1:leads
   decay <- w^my_power / sum(w^my_power) 
   
   #set the key observation-based covariate values for the simulation
@@ -65,8 +66,11 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,diff,lo,sig_a,sig_b,fit_s
   #this calculates the distance between each 1:leads set of obs in the simulation period and the hindcast period
   #knn_dist is a matrix of distances, with dimensions (n_hind_forward,n_sim)
   #note, this distance is only calculated for the keysite
-  gen_knn_data <- t(obs_forward_all_leads_gen[keysite,,])
-  fit_knn_data <- t(obs_forward_all_leads_fit[keysite,,])
+  ##gen_knn_data <- t(obs_forward_all_leads_gen[keysite,,])
+  ##fit_knn_data <- t(obs_forward_all_leads_fit[keysite,,])
+  gen_knn_data <- t(cbind(obs[ixx_obs%in%ixx_gen,keysite],obs_forward_all_leads_gen[keysite,,]))
+  fit_knn_data <- t(cbind(obs[ixx_obs%in%ixx_fit,keysite],obs_forward_all_leads_fit[keysite,,]))
+  
 
   #calculate distance
   knn_dist <- sapply(1:ncol(gen_knn_data),function(x){
@@ -91,19 +95,30 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,diff,lo,sig_a,sig_b,fit_s
   #final array for the ensemble forecasts at all lead times
   all_leads_gen <- array(NA,c(1,n_ens,n_gen,leads))
   
-  my_power <- scale_pwr
-  w <- 1:leads
-  decay <- (w^my_power / sum(w^my_power)) 
-  hi = lo+diff
-  lo = lo
-  dcy <- (decay-min(decay)) * (hi-lo)/(max(decay)-min(decay)) + lo
+  #w <- 1:leads
+  #decay <- (w^pwr / sum(w^pwr)) 
+  #hi = hi
+  #lo = lo
+  #dcy <- (decay-min(decay)) * (hi-lo)/(max(decay)-min(decay)) + lo
+  
+  hi = lo + dif
+  
+  scale_decay_fun <- function(hi,lo,pwr,lds){
+    w = 1:lds
+    if(pwr!=0){
+      win = rev(w)
+      dcy = (exp(pwr*win)-exp(pwr)) / (exp(pwr*win[length(win)-1])-exp(pwr))
+      dcy_out = dcy/max(dcy) * (hi-lo) + lo}
+    if(pwr==0){
+      dcy = (hi - lo)/(length(w)-1)
+      dcy_out = hi - 0:(length(w)-1)*dcy}
+    return(dcy_out)
+  }
+  
+  dcy <- scale_decay_fun(hi,lo,scale_pwr,leads)
 
   sigmoid_fun <- function(x,a,b){out <- 1/(1+exp(-x*a+b));return(out)}
-  
-  #plot(seq(-2,2,0.1),sigmoid_fun(seq(-2,2,0.1),1,0),type='l')
-  
 
-  ##HEFS_ens_mean_resamp_old <- apply(hefs_forward_resamp[keysite,,knn_lst,],FUN=mean,c(2,3))
   #what to add to adjust the resampled HEFS ensemble
   HEFS_scale <-  obs_forward_all_leads_gen[keysite,,]/obs_forward_all_leads_fit[keysite,knn_lst,] 
   #HEFS_scale[which(is.na(HEFS_scale) | HEFS_scale==Inf | HEFS_scale > ratio_threshold)] <- 1
@@ -118,7 +133,11 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,diff,lo,sig_a,sig_b,fit_s
     
     #ratio threshold is value between hi and lo threshold dependent on obs size via the sigmoid function
     ratio_threshold <- sigmoid_fun(obs_scale,sig_a,sig_b) * (dcy[k]-1) + 1
-    HEFS_sc[which(HEFS_sc > ratio_threshold)]<-1  # any ratios that exceed the upper bound set to 1, i.e. accept the original HEFS_fit value
+    #ratio_threshold <- dcy[k]
+    
+    HEFS_sc[which(HEFS_sc > ratio_threshold)]<-1
+    #HEFS_sc[which(HEFS_sc > ratio_threshold)]<-runif(length(which(HEFS_sc > ratio_threshold))) * (ratio_threshold[which(HEFS_sc > ratio_threshold)]-1) + 1
+    
     #alternate approach to set ratios that exceed the threshold to the threshold value
     #HEFS_sc[which(obs_forward_all_leads_gen[j,,k]>pcntile_val)]<-HEFS_scale[which(obs_forward_all_leads_gen[j,,k]>pcntile_val),k]  
     HEFS_scale[,k]<-HEFS_sc

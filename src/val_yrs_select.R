@@ -1,9 +1,9 @@
 #/////////////////////////////////////////
 #Primary user defined settings
 
-loc = 'LAM'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM' 'ADO'
+loc = 'NHG'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM' 'ADO'
 
-keysite_name = 'LAMC1'   #specific site ID for 'keysite' which conditions the kNN sampling
+keysite_name = 'NHGC1'   #specific site ID for 'keysite' which conditions the kNN sampling
 
 #////////////////////////////////////////
 library(ks)
@@ -63,9 +63,11 @@ hist(ann_tot_val,col='yellow',add=T)
 cal_ks <- kde(ann_tot_cal,eval.points = seq(min(ann_tot_trn),max(ann_tot_trn),(max(ann_tot_trn)-min(ann_tot_trn))/100))
 val_ks <- kde(ann_tot_val,eval.points = seq(min(ann_tot_trn),max(ann_tot_trn),(max(ann_tot_trn)-min(ann_tot_trn))/100))
 
+png(filename=paste('./data/',loc,'/val-years_kde-plot.png',sep=''))
 plot(cal_ks$eval.points,cal_ks$estimate,type='l',lwd=3,xlab='Annual flow (kcfs)',ylab='Density')
 lines(val_ks$eval.points,val_ks$estimate,col='yellow',lwd=2)
 legend('topright',c('Cal','Val'),c('black','yellow'))
+dev.off()
 
 saveRDS(sort(val_years+1900),paste('./data/',loc,'/opt_val_years_samp=',val_size,'.rds',sep=''))
 write.csv(sort(val_years+1900),paste('./data/',loc,'/opt_val_years_samp=',val_size,'.csv',sep=''))

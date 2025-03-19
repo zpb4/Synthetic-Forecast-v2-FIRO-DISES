@@ -6,11 +6,11 @@ idx = as.numeric(args[1])
 #/////////////////////////////////////////
 #Primary user defined settings
 
-loc = 'YRS'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
-n_samp = 100               #number of samples to generate
-keysite_name = 'ORDC1'   #specific site ID for 'keysite' which conditions the kNN sampling
-fit_gen_strategy = 'all'  #'all' fits to all available fit data and generate across all available observations
-cal_val_setup = '5fold'
+loc = 'LAM'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
+n_samp = 10               #number of samples to generate
+keysite_name = 'LAMC1'   #specific site ID for 'keysite' which conditions the kNN sampling
+fit_gen_strategy = 'specify'  #'all' fits to all available fit data and generate across all available observations
+cal_val_setup = 'cal'
 pcnt_opt = 0.99
 
 if(cal_val_setup!='5fold-test'){
@@ -20,7 +20,7 @@ if(cal_val_setup=='5fold-test'){
 
 #orimary hyperparameters
 kk <- 30           #sampling window
-knn_pwr <- 0     #larger negative values weights early lead times higher for sampling
+knn_pwr <- -0.5     #larger negative values weights early lead times higher for sampling
 
 scale_pwr = opt_params[2] 
 hi = opt_params[3]  
@@ -29,7 +29,7 @@ sig_a = opt_params[5]
 sig_b = opt_params[6] 
 
 #parallel configuration
-parllel=T          #use parallel processing
+parllel=F          #use parallel processing
 workrs=5        #number of workers (cores) to use
 
 if(cal_val_setup=='cal'){
@@ -70,8 +70,8 @@ print(leave_out_years)
 fit_start =   '1989-10-01'       
 fit_end =     '2019-09-30'          
 #date start for generation; date doesn't matter if 'all' selected above
-gen_start =   '1979-10-02'       
-gen_end =     '2021-10-01'      # note: generation only possible to end of 'ixx_obs_forward' index
+gen_start =   '1989-10-01'       
+gen_end =     '2019-07-30'      # note: generation only possible to end of 'ixx_obs_forward' index
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 #////////////////////////////////////////
@@ -89,13 +89,17 @@ library(future)
 library(future.apply)
 #library(future.batchtools)
 #library(fBasics)
+library(abind)
 
-source('./src/syn_gen.R')
+source('./src/syn_gen_hourly.R')
 
 #load in the prepared data
 load(paste('out/',loc,'/data_prep_rdata.RData',sep=''))
+load(paste('out/',loc,'/data_prep_hourly.RData',sep=''))
 rm(hefs_forward_cumul,hefs_forward_frac,hefs_forward_cumul_ens_avg,hefs_forward_cumul_ens_resid)
 
+#hefs_forward<-readRDS(paste('./out/',loc,'/hefs_forward.rds',sep=''))
+#hefs_forward_hourly<-readRDS(paste('./out/',loc,'/hefs_forward_hourly.rds',sep=''))
 #index for selected keysite
 keysite <- which(site_names==keysite_name)
 
@@ -113,10 +117,11 @@ ixx_gen <- as.POSIXlt(seq(as.Date(gen_start),as.Date(gen_end),by='day'),tz = "UT
 #synthetic generation
 
 syngen_fun <- function(x){message("x : ", x,Sys.time()); out <- syn_gen(x,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_start,fit_end,gen_start,gen_end,leave_out_years,
-                                                                        obs_forward_all_leads,obs_forward_all_leads_hind,hefs_forward,ixx_hefs,
-                                                                        ixx_obs_forward)}
+                                                                        obs_forward_all_leads,obs_forward_all_leads_hourly,obs_forward_all_leads_hind,obs_forward_all_leads_hind_hourly,
+                                                                        hefs_forward,hefs_forward_hourly,ixx_hefs,ixx_obs_forward,ixx_obs_forward_hourly,ixx_obs_hourly)}
 
-syn_hefs_forward <- array(NA,c(n_samp,n_sites,n_ens,length(ixx_gen),leads))
+syn_hefs_forward <- array(NA,c(n_samp,n_sites,n_ens,length(ixx_gen),leads*24))
+hefs_knn_samps <- vector('list',n_samp)
 
 if(parllel==TRUE){
   plan(multicore,workers=workrs)
@@ -124,25 +129,28 @@ if(parllel==TRUE){
 
 #compile to multidimensional array and save
   for(m in 1:n_samp){
-    syn_hefs_forward[m,,,,]<-fut_vec[[m]]
+    syn_hefs_forward[m,,,,]<-fut_vec[[m]][[1]]
+    hefs_knn_samps[[m]]<-fut_vec[[m]][[2]]
   }
 }
 
 #sequential processing if no parallel flag
 if(parllel==FALSE){
   for(m in 1:n_samp){
-    syn_hefs_forward[m,,,,]<-syngen_fun(m)
+    syn_hefs_forward[m,,,,]<-syngen_fun(m)[[1]]
+    hefs_knn_samps[[m]]<-syngen_fun(m)[[2]]
     print(paste('m=',m,Sys.time()))
   }
 }
 
 if(cal_val_setup != '5fold' & cal_val_setup!='5fold-test'){
-  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))}
+  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_hourly_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))}
 if(cal_val_setup == '5fold' | cal_val_setup =='5fold-test'){
-  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'-',idx,'.rds',sep=''))}
+  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_hourly_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'-',idx,'.rds',sep=''))}
 
-saveRDS(ixx_gen,file=paste('out/',loc,'/ixx_gen.rds',sep=''))
-saveRDS(n_samp,file=paste('out/',loc,'/n_samp.rds',sep=''))
+saveRDS(hefs_knn_samps,file=paste('out/',loc,'/hefs_knn-samps_',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))
+saveRDS(ixx_gen,file=paste('out/',loc,'/ixx_gen_hourly.rds',sep=''))
+saveRDS(n_samp,file=paste('out/',loc,'/n_samp_hourly.rds',sep=''))
 
 print(paste('syngen end',Sys.time()))
 

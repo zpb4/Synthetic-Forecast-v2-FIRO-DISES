@@ -1,12 +1,10 @@
 
-syn_opt <- function(idx,loc,keysite_name,cal_val_setup,pcnt,obj_pwr,scale_pwr,diff,lo,sig_a,sig_b,knn_val,knn_pwr){
+syn_opt <- function(idx,loc,keysite_name,cal_val_setup,kk,knn_pwr,pcnt,obj_pwr,scale_pwr,diff,lo,sig_a,sig_b){
 
 #/////////////////////////////////////////
 #Primary user defined settings
 source('./src/syn_gen_opt.R')
 source('../Synthetic-Forecast_Verification/src/forecast_verification_functions.R')
-  
-kk <- as.integer(knn_val)
 
 wy_fun<-function(date_vec){
   wy_vec <- date_vec$year
@@ -30,7 +28,7 @@ fit_gen_strategy = 'all'  #'all' fits to all available fit data and generate acr
 ##sig_b = 0 
 
 #load in the prepared data
-load(paste('out/',loc,'/data_prep_rdata.RData',sep=''))
+load(paste('out/',loc,'/data_prep_rdata_scaled_',scale_site,'_evt=',evt_to_scale,'_rtn=',return_period,'.RData',sep=''))
 rm(hefs_forward_cumul,hefs_forward_frac,hefs_forward_cumul_ens_avg,hefs_forward_cumul_ens_resid)
 gc()
 
@@ -240,27 +238,25 @@ for (ld in 1:length(lds)) {
 rm(HEFS,SYN_HEFS,HEFS_ens_mean,syn_HEFS_ens_mean,syn_hefs_val,hefs_val,obs_val)
 gc()
 
+#hefs_ecrps_med <- apply(hefs_ecrps_vec,2,median)
+#shefs_ecrps_med <- apply(shefs_ecrps_vec,2,median)
+
+#sse_ecrps <- mean(sqrt((hefs_ecrps_med-shefs_ecrps_med)^2))
+
 my_power <- obj_pwr
 w <- 1:leads
 decay <- (w^my_power / sum(w^my_power))
 
-hefs_ecrps_med <- apply(hefs_ecrps_vec,2,median)
-shefs_ecrps_med <- apply(shefs_ecrps_vec,2,median)
+diff_vec_ecrps <- hefs_ecrps_vec - shefs_ecrps_vec
+sc_diff_vec_ecrps <- scale(diff_vec_ecrps,center = F)
 
-sse_ecrps_int <- (decay*(hefs_ecrps_med-shefs_ecrps_med)/hefs_ecrps_med)^2
+mse_ecrps_int <- apply(sc_diff_vec_ecrps,2,function(x){out<-mean(sqrt(x^2))})
 
-sse_ecrps <- mean(sse_ecrps_int)
+mse_ecrps <- mean(decay*mse_ecrps_int)
 
-##diff_vec_ecrps <- hefs_ecrps_vec - shefs_ecrps_vec
-##sc_diff_vec_ecrps <- scale(diff_vec_ecrps,center = F)
+mse_tot <- mse_ecrps + mean(decay*sqrt((MSE_HEFS - MSE_syn_HEFS)^2))
 
-##mse_ecrps_int <- apply(sc_diff_vec_ecrps,2,function(x){out<-mean(sqrt(x^2))})
-
-##mse_ecrps <- mean(decay*mse_ecrps_int)
-
-#mse_tot <- mse_ecrps + mean(decay*sqrt((MSE_HEFS - MSE_syn_HEFS)^2))
-
-return(sse_ecrps)
+return(mse_ecrps)
 }
 
 
