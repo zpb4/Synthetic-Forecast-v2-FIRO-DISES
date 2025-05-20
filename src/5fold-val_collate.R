@@ -1,10 +1,10 @@
 #/////////////////////////////////////////
 #Primary user defined settings
 
-loc = 'SOD'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM' 'ADO'
-keysite_name = 'SRWC1'
-pcnt_opt = 0.9901
-cal_val_setup = '5fold'
+loc = 'YRS'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM' 'ADO'
+keysite_name = 'ORDC1'
+pcnt_opt = 0.99
+cal_val_setup = '5fold-test'
 obj_pwr = 0
 opt_strat = 'ecrps-dts'
 
