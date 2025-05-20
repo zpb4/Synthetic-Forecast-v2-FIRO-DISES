@@ -6,46 +6,38 @@ idx = as.numeric(args[1])
 #/////////////////////////////////////////
 #Primary user defined settings
 
-loc = 'YRS'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
+loc = 'SOD'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
 n_samp = 100               #number of samples to generate
-keysite_name = 'ORDC1'   #specific site ID for 'keysite' which conditions the kNN sampling
+keysite_name = 'SRWC1'   #specific site ID for 'keysite' which conditions the kNN sampling
 fit_gen_strategy = 'all'  #'all' fits to all available fit data and generate across all available observations
 cal_val_setup = '5fold'
-pcnt_opt = 0.99
+pcnt_opt = 0.9901
+obj_pwr = 0
+opt_strat = 'ecrps-dts'
 
 if(cal_val_setup!='5fold-test'){
-  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_',keysite_name,'.rds',sep=''))}
+  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'.rds',sep=''))}
 if(cal_val_setup=='5fold-test'){
-  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_',keysite_name,'-',idx,'.rds',sep=''))}
+  opt_params <- readRDS(paste('./out/',loc,'/DE-opt-params_',cal_val_setup,'_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'-',idx,'.rds',sep=''))}
 
 #orimary hyperparameters
-kk <- 30           #sampling window
-knn_pwr <- 0     #larger negative values weights early lead times higher for sampling
+#kk <- 30           #sampling window
+#knn_pwr <- 0     #larger negative values weights early lead times higher for sampling
+kk <- as.integer(opt_params[7])          #sampling window
+knn_pwr <- opt_params[8]     #larger negative values weights early lead times higher for sampling
 
 scale_pwr = opt_params[2] 
 hi = opt_params[3]  
 lo = opt_params[4]   
 sig_a = opt_params[5] 
-sig_b = opt_params[6] 
+sig_b = opt_params[6]
 
 #parallel configuration
-parllel=T          #use parallel processing
+parllel=T        #use parallel processing
 workrs=5        #number of workers (cores) to use
 
 if(cal_val_setup=='cal'){
   leave_out_years = c()
-}
-
-if(cal_val_setup=='val'){
-  lv_out_samps = 6          #how many validation years to leave out
-  opt_leave_out = readRDS(paste('./data/',loc,'/opt_val_years_samp=',lv_out_samps,'.rds',sep=''))  #optimal validation subset
-  leave_out_years = opt_leave_out #years from 'fit' period to leave out of fitting for model validation, use opt value or input vector of water years, e.g. c(1995,2000,2005,etc)
-}
-
-if(cal_val_setup=='wet'){
-  lv_out_samps = 6          #how many validation years to leave out
-  opt_leave_out = readRDS(paste('./data/',loc,'/wet_val_years_samp=',lv_out_samps,'.rds',sep=''))  #optimal validation subset
-  leave_out_years = opt_leave_out #years from 'fit' period to leave out of fitting for model validation, use opt value or input vector of water years, e.g. c(1995,2000,2005,etc)
 }
 
 if(cal_val_setup=='5fold' | cal_val_setup=='5fold-test'){
@@ -113,10 +105,12 @@ ixx_gen <- as.POSIXlt(seq(as.Date(gen_start),as.Date(gen_end),by='day'),tz = "UT
 #synthetic generation
 
 syngen_fun <- function(x){message("x : ", x,Sys.time()); out <- syn_gen(x,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_start,fit_end,gen_start,gen_end,leave_out_years,
-                                                                        obs_forward_all_leads,obs_forward_all_leads_hind,hefs_forward,ixx_hefs,
-                                                                        ixx_obs_forward)}
+                                                                       obs_forward_all_leads,obs_forward_all_leads_hind,hefs_forward,ixx_hefs,
+                                                                       ixx_obs_forward)}
 
 syn_hefs_forward <- array(NA,c(n_samp,n_sites,n_ens,length(ixx_gen),leads))
+hefs_resamps <- array(NA,c(n_samp,length(ixx_gen)))
+hefs_scale <- array(NA,c(n_samp,n_sites,length(ixx_gen),leads))
 
 if(parllel==TRUE){
   plan(multicore,workers=workrs)
@@ -124,22 +118,30 @@ if(parllel==TRUE){
 
 #compile to multidimensional array and save
   for(m in 1:n_samp){
-    syn_hefs_forward[m,,,,]<-fut_vec[[m]]
+    syn_hefs_forward[m,,,,]<-fut_vec[[m]][[1]]
+    hefs_resamps[m,] <- as.character(fut_vec[[m]][[2]])
+    hefs_scale[m,,,] <- fut_vec[[m]][[3]]
   }
 }
 
 #sequential processing if no parallel flag
 if(parllel==FALSE){
   for(m in 1:n_samp){
-    syn_hefs_forward[m,,,,]<-syngen_fun(m)
+    syn_hefs_forward[m,,,,]<-syngen_fun(m)[[1]]
+    hefs_resamps[m,] <- as.character(syngen_fun(m)[[2]])
+    hefs_scale[m,,,] <- syngen_fun(m)[[3]]
     print(paste('m=',m,Sys.time()))
   }
 }
 
 if(cal_val_setup != '5fold' & cal_val_setup!='5fold-test'){
-  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))}
+  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))
+  saveRDS(hefs_scale,file=paste('out/',loc,'/hefs-scale_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))
+  saveRDS(hefs_resamps,file=paste('out/',loc,'/hefs-resamps_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))}
 if(cal_val_setup == '5fold' | cal_val_setup =='5fold-test'){
-  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'-',idx,'.rds',sep=''))}
+  saveRDS(syn_hefs_forward,file=paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'_',cal_val_setup,'-',idx,'.rds',sep=''))
+  saveRDS(hefs_scale,file=paste('out/',loc,'/hefs-scale_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'_',cal_val_setup,'-',idx,'.rds',sep=''))
+  saveRDS(hefs_resamps,file=paste('out/',loc,'/hefs-resamps_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'_',cal_val_setup,'-',idx,'.rds',sep=''))}
 
 saveRDS(ixx_gen,file=paste('out/',loc,'/ixx_gen.rds',sep=''))
 saveRDS(n_samp,file=paste('out/',loc,'/n_samp.rds',sep=''))

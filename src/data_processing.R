@@ -6,7 +6,7 @@ library(stringr)
 print(paste('datapro start',Sys.time()))
 
 #input main location ID
-loc <- 'LAM'  #current options: 'NHG' 'YRS' 'LAM'
+loc <- 'SOD'  #current options: 'NHG' 'YRS' 'LAM' 'ADO' 'WSD' 'SOD'
 
 #---------------------Get the daily observations for each site ----------------------------
 #REQUIREMENTS FOR 'observed_flows.csv'
@@ -80,7 +80,7 @@ leads <- nrow(temp)/24
 leads <- min(leads,15) #only want max of 15d dynamical forecasts (some have 30 leads)
 
 #function to convert hourly forecasts to daily average forecasts
-agg_fun_dly <- function(x){out <- apply(matrix(as.numeric(x),nrow=24,byrow = F),2,mean); return(out)}
+agg_fun_dly <- function(x){out <- apply(matrix(as.numeric(x),nrow=24,byrow = F),2,function(x){mean(x,na.rm=T)}); return(out)}
 
 #loop through sites and create hefs_forward
 hefs_forward <- array(NA,c(n_sites,n_ens,n_hefs,leads))
@@ -97,7 +97,7 @@ for(i in 1:n_sites){
       temp <- temp[-1,]}
     #convert to daily forecasts 
     hefs_inp = t(apply(temp[,-1],2,agg_fun_dly))
-    hefs_forward[i,,j,] <- hefs_inp[,1:leads]
+    hefs_forward[i,,j,] <- hefs_inp[,1:leads] 
     #write and save a set of daily HEFS forecasts from hourly inputs
     hefs_dly_out<-t(hefs_forward[i,,j,])
     dly_dates<-as.character(ixx_hefs_out[(j+1):(j+dim(hefs_dly_out)[1])])

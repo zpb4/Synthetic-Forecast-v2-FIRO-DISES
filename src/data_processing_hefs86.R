@@ -6,7 +6,7 @@ library(stringr)
 print(paste('datapro start',Sys.time()))
 
 #input main location ID
-loc <- 'YRS'  #current options: 'NHG' 'YRS' 'LAM'
+loc <- 'YRS'  #current options: 'NHG' 'YRS' 'LAM' 'ADO' 'WSD'
 
 #---------------------Get the daily observations for each site ----------------------------
 #REQUIREMENTS FOR 'observed_flows.csv'

@@ -5,10 +5,12 @@ library(ncdf4)
 
 
 #----------------------------------------
-loc = 'NHG'
-keysite_name = 'NHGC1'
+loc = 'YRS'
+keysite_name = 'NBBC1'
 pcnt_opt = 0.99
 cal_val_setup = '5fold-test'
+obj_pwr = 0
+opt_strat = 'ecrps-dts'
 
 load(paste('./out/',loc,'/data_prep_rdata.RData',sep=''))
 
@@ -16,7 +18,7 @@ load(paste('./out/',loc,'/data_prep_rdata.RData',sep=''))
 unlink(paste('./out/',loc,'/Qf-hefs.nc',sep=''),recursive=TRUE)
 unlink(paste('out/',loc,'/Qf-syn_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'.nc',sep=''),recursive=TRUE)
 
-syn_hefs_forward <- readRDS(paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))
+syn_hefs_forward <- readRDS(paste('out/',loc,'/syn_hefs_forward_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'_',cal_val_setup,'.rds',sep=''))
 print(dim(syn_hefs_forward))
 ixx_gen <- readRDS(paste('./out/',loc,'/ixx_gen.rds',sep='')) 
 n_samp <- readRDS(paste('./out/',loc,'/n_samp.rds',sep='')) 
@@ -56,7 +58,7 @@ ld_dim<-ncdim_def('lead','',0:(dim(syn_hefs_forward)[5]-1))
 
 #write the variable to the netcdf file and save
 shefs_var<-ncvar_def('syn','kcfs',dim=list(ens_dim,site_dim,ld_dim,trace_dim,date_dim))
-shefs_nc<-nc_create(paste('out/',loc,'/Qf-syn_pcnt=',pcnt_opt,'_',keysite_name,'_',cal_val_setup,'.nc',sep=''),shefs_var,force_v4 = F)
+shefs_nc<-nc_create(paste('out/',loc,'/Qf-syn_pcnt=',pcnt_opt,'_objpwr=',obj_pwr,'_optstrat=',opt_strat,'_',keysite_name,'_',cal_val_setup,'.nc',sep=''),shefs_var,force_v4 = F)
 ncvar_put(shefs_nc,shefs_var,shefs_out)
 nc_close(shefs_nc)
 
