@@ -20,3 +20,5 @@
 *.sh
 *.cmd
 *.csv
+*.pdf
+*.db
