@@ -91,11 +91,9 @@ The output of the first two steps is an R array that is saved as an R data struc
 
 3) ./src/5fold-val_collate.R
    - combines the folds to a single array for the 5-fold generation schemes ('5fold', '5fold-test')
-4) ./src/data_writeout.R
-   - writes individual .csv files in the same format as the input HEFS .csv files for each generated sample
-5) ./src/data_writeout_ncdf.R
+4) ./src/data_writeout_ncdf.R
    - writes both HEFS and synthetic HEFS files to a netCDF file
-6) ./src/slice_plot-ens.R
+5) ./src/slice_plot-ens.R
    - slices a 10x sample subset from the generated synthetic forecast array for plotting; the raw arrays for large sample runs (e.g. 100 samples) require too much RAM for typical personal computers
 
 All scripts create and output metadata to the ./out/_main_hindcast_location_/ subdirectory. For sites with separate 1986 data, there are separate scripts with a '_86.R' suffix to process those specific data subsets.  
