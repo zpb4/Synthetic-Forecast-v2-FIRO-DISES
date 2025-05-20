@@ -46,7 +46,7 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_sta
   ##w <- 1:(leads+1)
   w <- 1:leads
   decay <- w^knn_pwr / sum(w^knn_pwr)
-  decay <- c(rep(decay[1],1),decay)
+  ##decay <- c(rep(decay[1],1),decay)
   
   #set the key observation-based covariate values for the simulation
   obs_forward_all_leads_gen <- obs_forward_all_leads[,ixx_obs_forward%in%ixx_gen,,drop=FALSE]
@@ -57,11 +57,11 @@ syn_gen <- function (seed,kk,keysite,knn_pwr,scale_pwr,hi,lo,sig_a,sig_b,fit_sta
   #this calculates the distance between each 1:leads set of obs in the simulation period and the hindcast period
   #knn_dist is a matrix of distances, with dimensions (n_hind_forward,n_sim)
   #note, this distance is only calculated for the keysite
-  ##gen_knn_data <- t(obs_forward_all_leads_gen[keysite,,])
-  ##fit_knn_data <- t(obs_forward_all_leads_fit[keysite,,])
+  gen_knn_data <- t(obs_forward_all_leads_gen[keysite,,])
+  fit_knn_data <- t(obs_forward_all_leads_fit[keysite,,])
   
-  gen_knn_data <- t(cbind(obs[ixx_obs%in%ixx_gen,keysite],obs_forward_all_leads_gen[keysite,,]))
-  fit_knn_data <- t(cbind(obs[ixx_obs%in%ixx_fit,keysite],obs_forward_all_leads_fit[keysite,,]))
+  ##gen_knn_data <- t(cbind(obs[ixx_obs%in%ixx_gen,keysite],obs_forward_all_leads_gen[keysite,,]))
+  ##fit_knn_data <- t(cbind(obs[ixx_obs%in%ixx_fit,keysite],obs_forward_all_leads_fit[keysite,,]))
   
   ##gen_knn_data <- apply(gen_knn_data,2,function(x){x / sum(x)})
   ##fit_knn_data <- apply(fit_knn_data,2,function(x){x / sum(x)})

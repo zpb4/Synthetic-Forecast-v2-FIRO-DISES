@@ -12,13 +12,13 @@ library(lubridate)
 #/////////////////////////////////////////
 #Primary user defined settings
 
-loc = 'SOD'             #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'             #number of samples to generate
-keysite_name = 'SRWC1'   #specific site ID for 'keysite' which conditions the kNN sampling
-cal_val_setup = '5fold'
+loc = 'YRS'             #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'             #number of samples to generate
+keysite_name = 'ORDC1'   #specific site ID for 'keysite' which conditions the kNN sampling
+cal_val_setup = '5fold-test'
 
 opt_strat = 'ecrps-dts'
 opt_samps = 1
-pcnt = 0.9901     #percentile to target for eCRPS loss function; e.g. 0.9 = 90-100% of obs inflows
+pcnt = 0.99     #percentile to target for eCRPS loss function; e.g. 0.9 = 90-100% of obs inflows
 obj_pwr = 0       #decay function value to weight leads differently, neg values to weight shorter leads, pos to weight longer leads
 
 #optimized parameters (reasonable values shown for testing the function, actual optimization per)

@@ -6,12 +6,12 @@ idx = as.numeric(args[1])
 #/////////////////////////////////////////
 #Primary user defined settings
 
-loc = 'SOD'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
+loc = 'YRS'              #main hindcast location ID, current options: 'NHG' 'YRS' 'LAM'
 n_samp = 100               #number of samples to generate
-keysite_name = 'SRWC1'   #specific site ID for 'keysite' which conditions the kNN sampling
+keysite_name = 'ORDC1'   #specific site ID for 'keysite' which conditions the kNN sampling
 fit_gen_strategy = 'all'  #'all' fits to all available fit data and generate across all available observations
-cal_val_setup = '5fold'
-pcnt_opt = 0.9901
+cal_val_setup = '5fold-test'
+pcnt_opt = 0.99
 obj_pwr = 0
 opt_strat = 'ecrps-dts'
 

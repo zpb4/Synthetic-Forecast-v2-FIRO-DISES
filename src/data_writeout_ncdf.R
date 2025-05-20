@@ -6,7 +6,7 @@ library(ncdf4)
 
 #----------------------------------------
 loc = 'YRS'
-keysite_name = 'NBBC1'
+keysite_name = 'ORDC1'
 pcnt_opt = 0.99
 cal_val_setup = '5fold-test'
 obj_pwr = 0
