@@ -1,5 +1,8 @@
 # Synthetic-Forecast-v2-FIRO-DISES
-Synthetic forecast model to support FIRO and Synthetic Forecast integration efforts. Version 2 is model that uses an kNN resampling and scaling procedure that is constrained by an optimized threshold. This method is referred to as 'syn-M2' in the manuscript entitled 'Synthetic ensemble forecasts: operations-based evaluation and inter-model comparison for reservoir systems across California' published in Water Resources Research in 2025.
+Synthetic forecast model to support FIRO and Synthetic Forecast integration efforts. Version 2 is model that uses an kNN resampling and scaling procedure that is constrained by an optimized threshold. This method is referred to as 'syn-M2' in the manuscript below that develops the full methodology:   
+   
+Brodeur, Z. P., Taylor, W., Herman, J. D., & Steinschneider, S. (2025). Synthetic Ensemble Forecasts: Operations‐Based Evaluation and Inter‐Model Comparison for Reservoir Systems Across California. Water Resources Research, 61(e2024WR039324). https://doi.org/10.1029/%25202024WR039324   
+   
 
 The model is setup generically to run synthetic forecasts for any main hindcast location with an arbitrary number of associated sites. The main location is specified by the 'loc' variable at the top of all main workflow scripts, which will point to the location specific subdirectory (i.e. ./my_directory/_main_hindcast_location_) in the 'data' sub-repo once the data have been downloaded from the referenced Hydroshare resources. The user must also specify the 'keysite' variable as the primary site to condition the sampling procedure. Typically, this would be the main reservoir inflow point for a smaller system. For a system with multiple reservoir inflow points, it is up to user discretion, but one strategy is to use the largest (by annual inflow magnitude) inflow point. Recommended settings for these primary user defined variables are indicated below. The scripts will create and write to an 'out' sub-repo with a similar structure to the 'data' sub-repo. The scripts are setup, by default, to fit the model to all available hindcast data with some leftout water years for validation and generate a user-defined number of samples across the entire observational record. These time data ranges can be modified by the user.
 
@@ -29,12 +32,33 @@ keysite = 'NHGC1'
 n_samp = 100   
 
  Brodeur, Z. P. (2025). NHG Synthetic Forecast generation dataset, HydroShare, https://doi.org/10.4211/hs.dfa02b83bbde4ae3888ffafeb4446a5b   
- 
+
 ---
+Setup for forecast generation at Seven Oaks Dam (WSD), including reservoir inflow at Seven Oaks Dam (SRWC1). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/833b01b4c0ee47378fd1eac7ba17ace4/). Starting user-defined settings are:
+  
+loc = 'SOD'   
+keysite = 'SRWC1'   
+n_samp = 100   
+
+Brodeur, Z. P. (2025). SOD Synthetic Forecast Generation Dataset, HydroShare, https://www.hydroshare.org/resource/833b01b4c0ee47378fd1eac7ba17ace4/
+
+---
+Setup for forecast generation at selected sites of the Lake Sonoma@Warm Springs Dam system (WSD), including reservoir inflow at Lake Sonoma@Warm Springs Dam (WSDC1) and Lake Mendocino@Coyote Dam (LAMC1) and downstream local flows along the Russian River system. HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/d5d81f791da04b848c41c253a4c665ca/). Starting user-defined settings are:
+  
+loc = 'WSD'   
+keysite = 'WSDC1'   
+n_samp = 100   
+
+_Note: This repo has redundancies with the Lake Mendocino system (LAM) repository, but includes Lake Sonoma as the primary site and many more sites along the Russian River._   
+
+Brodeur, Z. P. (2025). WSD Synthetic Forecast Generation Dataset, HydroShare, https://www.hydroshare.org/resource/d5d81f791da04b848c41c253a4c665ca/  
+
+---
+
 Setup for forecast generation at selected sites of the Yuba-Feather system (YRS), including reservoir inflow at Lake Oroville (ORDC1) and New Bullards Bar (NBBC1) and downstream local flows at Marysville junction (MRYC1L). HEFS data is stored on a zip file [here](https://www.hydroshare.org/resource/29a7c696ee4e4766883078ca0d681884/). Starting user-defined settings are:
   
 loc = 'YRS'   
-keysite = 'ORDC1' and 'NBBC1'   
+keysite = 'ORDC1' or 'NBBC1'   
 n_samp = 100   
 
 Brodeur, Z. P. (2025). YRS Synthetic Forecast Generation Dataset, HydroShare, https://doi.org/10.4211/hs.29a7c696ee4e4766883078ca0d681884    
